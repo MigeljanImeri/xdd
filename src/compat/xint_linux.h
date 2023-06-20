@@ -23,7 +23,7 @@
 /* POSIX headers */
 #include <sys/types.h>
 #include <libgen.h>
-#include <unistd.h> 
+#include <unistd.h>
 #include <ctype.h>
 #include <sys/time.h>
 #include <sys/ipc.h>
@@ -50,9 +50,6 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#if (SNFS)
-#include <client/cvdrfile.h>
-#endif
 
 /* Platform headers */
 #if HAVE_LINUX_MAGIC_H

@@ -70,19 +70,6 @@
 #define ULONGLONG_MAX ULLONG_MAX
 #endif
 
-/*
- * Windows defines a LONGLONG type to hold long data; problem is
- * it's a floating point, rather than an integral type.  So this
- * kludge is used to convert a LONGLONG to its long long form.
- */
-#ifdef WIN32 
-
-/* Enable Intel on Windows? */
-#define __INTEL__
-
-#define LONG_LONG(LLvar) (*(long long *) &(LLvar).QuadPart)
-#define pause()    /* Not defined in Windows env */
-#endif /* WIN32 long long redefinition */
 #endif /* ! MISC_H */
 
 /*

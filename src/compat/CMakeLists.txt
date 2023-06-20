@@ -1,13 +1,5 @@
 set(COMPAT_SRC
-  # nt_unix_compat.c
-  # nt_unix_compat.h
-  # xint_aix.h
-  # xint_barrier.h
-  # xint_darwin.h
-  # xint_freebsd.h
   # xint_linux.h
-  # xint_solaris.h
-  # xint_win32.h
   )
 
 # add_library(compat OBJECT ${COMPAT_SRC} "${CONFIG_H}")

@@ -14,11 +14,11 @@
 #include <unistd.h>
 
 //******************************************************************************
-// Things the Target Thread needs to do after a single pass 
+// Things the Target Thread needs to do after a single pass
 //******************************************************************************
 
 /*----------------------------------------------------------------------------*/
-/* xdd_target_ttd_after_pass() - This subroutine will do all the stuff needed to 
+/* xdd_target_ttd_after_pass() - This subroutine will do all the stuff needed to
  * be done after the inner-most loop has done does all the I/O operations
  * that constitute a "pass" or some portion of a pass if it terminated early.
  */
@@ -33,11 +33,7 @@ xdd_target_ttd_after_pass(target_data_t *tdp) {
 	status = 0;
 	// Issue an fdatasync() to flush all the write buffers to disk for this file if the -syncwrite option was specified
 	if (tdp->td_target_options & TO_SYNCWRITE) {
-#if (LINUX || AIX)
             status = fdatasync(tdp->td_file_desc);
-#else
-            status = fsync(tdp->td_file_desc);
-#endif
         }
 	/* Get the ending time stamp */
 	nclk_now(&tdp->td_counters.tc_pass_end_time);
@@ -49,16 +45,16 @@ xdd_target_ttd_after_pass(target_data_t *tdp) {
 	// Loop through all the Worker Threads to put the Earliest Start Time and Latest End Time into this Target Data Struct
 	wdp = tdp->td_next_wdp;
 	while (wdp) {
-		if (wdp->wd_counters.tc_time_first_op_issued_this_pass <= tdp->td_counters.tc_time_first_op_issued_this_pass) 
+		if (wdp->wd_counters.tc_time_first_op_issued_this_pass <= tdp->td_counters.tc_time_first_op_issued_this_pass)
 			tdp->td_counters.tc_time_first_op_issued_this_pass = wdp->wd_counters.tc_time_first_op_issued_this_pass;
-		if (wdp->wd_counters.tc_pass_start_time <= tdp->td_counters.tc_pass_start_time) 
+		if (wdp->wd_counters.tc_pass_start_time <= tdp->td_counters.tc_pass_start_time)
 			tdp->td_counters.tc_pass_start_time = wdp->wd_counters.tc_pass_start_time;
-		if (wdp->wd_counters.tc_pass_end_time >= tdp->td_counters.tc_pass_end_time) 
+		if (wdp->wd_counters.tc_pass_end_time >= tdp->td_counters.tc_pass_end_time)
 			tdp->td_counters.tc_pass_end_time = wdp->wd_counters.tc_pass_end_time;
 		wdp = wdp->wd_next_wdp;
 	}
-	if (tdp->td_target_options & TO_ENDTOEND) { 
-		// Average the Send/Receive Time 
+	if (tdp->td_target_options & TO_ENDTOEND) {
+		// Average the Send/Receive Time
 		tdp->td_e2ep->e2e_sr_time /= tdp->td_queue_depth;
 	}
 

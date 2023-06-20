@@ -17,7 +17,6 @@
  * This file contains the subroutines necessary to support SCSI Generic I/O under LINUX.
  */
 #include "xint.h"
-#if LINUX
 #include "sg.h"
 // #define SG_DEBUG
 
@@ -29,12 +28,12 @@
 // SCSI Generic Support Routines
 //******************************************************************************
 /*----------------------------------------------------------------------------*/
-/* xdd_get_sgiop() - return a pointer to the SCSI Generic I/O (SGIO) Data Structure 
+/* xdd_get_sgiop() - return a pointer to the SCSI Generic I/O (SGIO) Data Structure
  * for the specified target
  */
 xdd_sgio_t *
 xdd_get_sgiop(worker_data_t *wdp) {
-	
+
 	if (wdp->wd_sgiop == 0) { // Since there is no existing SGIO structure, allocate a new one for this target, initialize it, and move on...
 		wdp->wd_sgiop = malloc(sizeof(struct xdd_sgio));
 		if (wdp->wd_sgiop == NULL) {
@@ -48,17 +47,17 @@ xdd_get_sgiop(worker_data_t *wdp) {
 
 /*----------------------------------------------------------------------------*/
 /* xdd_sg_io() - Perform a "read" or "write" operation on the specified target
- * Will return a -1 if the command fails, 0 for EOF, or the number of 
- * bytes transferred if everything works. 
+ * Will return a -1 if the command fails, 0 for EOF, or the number of
+ * bytes transferred if everything works.
  * This ruotine takes two parameters:
  *   - Pointer to the Data Struct of this target
- *   - A character that is either 'r' or 'w' to indicate a 'read' or 'write' 
+ *   - A character that is either 'r' or 'w' to indicate a 'read' or 'write'
  *       operation respectively.
  */
-int32_t 
+int32_t
 xdd_sg_io(worker_data_t *wdp, char rw) {
 	target_data_t	*tdp;			// Pointer to the Target Data for this worker
-	unsigned char 	Cmd[16];		// This is defined as a 16-byte CDB 
+	unsigned char 	Cmd[16];		// This is defined as a 16-byte CDB
 	sg_io_hdr_t 	io_hdr;
 	int 			status;			// This is the status from the SG driver
 	int 			io_status;		// This is the status from the device itself
@@ -72,9 +71,9 @@ xdd_sg_io(worker_data_t *wdp, char rw) {
 	sgiop->sg_blocksize = 512; // This is because sg uses a sector size block size
 	sgiop->sg_from_block = (wdp->wd_task.task_byte_offset / sgiop->sg_blocksize);
 	sgiop->sg_blocks = wdp->wd_task.task_xfer_size / sgiop->sg_blocksize;
-	
+
 	// Init the CDB
-	if (rw == 'w') 
+	if (rw == 'w')
 		 Cmd[0] = WRITE_16;
 	else Cmd[0] = READ_16; // Assume Read
 	Cmd[1] = 0;
@@ -94,7 +93,7 @@ xdd_sg_io(worker_data_t *wdp, char rw) {
 	Cmd[13] = (unsigned char)(sgiop->sg_blocks & 0xff);
 	// MMC-4, and group number - NA
 	Cmd[14] = 0;
-	// Control 
+	// Control
 	Cmd[15] = 0;
 
 	// Init the IO Header that is used by the SG driver
@@ -102,7 +101,7 @@ xdd_sg_io(worker_data_t *wdp, char rw) {
 	io_hdr.interface_id = 'S';
 	io_hdr.cmd_len = sizeof(Cmd);
 	io_hdr.cmdp = Cmd;
-	if (rw == 'w') 
+	if (rw == 'w')
 		io_hdr.dxfer_direction = SG_DXFER_TO_DEV; // Write op
 	else io_hdr.dxfer_direction = SG_DXFER_FROM_DEV; // Read op
 	io_hdr.dxfer_len = sgiop->sg_blocksize * sgiop->sg_blocks;
@@ -152,7 +151,7 @@ xdd_sg_io(worker_data_t *wdp, char rw) {
 			tdp->td_target_full_pathname,
 			status,
 			(long long)wdp->wd_task.task_op_number,
-			(unsigned long long)sgiop->sg_from_block, 
+			(unsigned long long)sgiop->sg_from_block,
 			sgiop->sg_blocks);
 		fflush(xgp->errout);
 
@@ -168,11 +167,11 @@ xdd_sg_io(worker_data_t *wdp, char rw) {
 					tdp->td_target_full_pathname,
 					status,
 					(long long)wdp->wd_task.task_op_number,
-					(unsigned long long)sgiop->sg_from_block, 
+					(unsigned long long)sgiop->sg_from_block,
 					sgiop->sg_blocks);
 				break;
 			default:
-				status = xdd_sg_read_capacity(wdp); 
+				status = xdd_sg_read_capacity(wdp);
 				if (status == SUCCESS) { // Check for an out-of-bounds condition
 					last_sector = sgiop->sg_from_block + sgiop->sg_blocks - 1;
 					if ( last_sector > sgiop->sg_num_sectors) { // LBA out of range error most likely
@@ -181,7 +180,7 @@ xdd_sg_io(worker_data_t *wdp, char rw) {
 							tdp->td_target_number,
 							wdp->wd_worker_number,
 							(long long)wdp->wd_task.task_op_number,
-							(unsigned long long)sgiop->sg_from_block, 
+							(unsigned long long)sgiop->sg_from_block,
 							sgiop->sg_blocks);
 					}
 				} // Done checking for out-of-range error
@@ -193,10 +192,10 @@ xdd_sg_io(worker_data_t *wdp, char rw) {
 					tdp->td_target_full_pathname,
 					status,
 					(long long)wdp->wd_task.task_op_number,
-					(unsigned long long)sgiop->sg_from_block, 
+					(unsigned long long)sgiop->sg_from_block,
 					sgiop->sg_blocks);
 				return(0);
-		
+
 		} // End of SWITCH stmnt
 
 	} // End of looking at SG driver errors
@@ -204,14 +203,14 @@ xdd_sg_io(worker_data_t *wdp, char rw) {
 	// No error - return the amount of data that was transferred
 	return(sgiop->sg_blocksize*sgiop->sg_blocks);
 
-} // End of xdd_sg_io() 
+} // End of xdd_sg_io()
 
 /*----------------------------------------------------------------------------*/
 /* xdd_sg_read_capacity() - Issue a "Read Capacity" SCSI command to the target
  * and store the results in the associated Data Struct
  * Will return SUCCESS or FAILED depending on the outcome of the command.
  */
-int32_t 
+int32_t
 xdd_sg_read_capacity(worker_data_t *wdp) {
 	target_data_t	*tdp;			// Pointer to the Target Data for this worker
 	int 			status;
@@ -234,7 +233,7 @@ xdd_sg_read_capacity(worker_data_t *wdp) {
 	rcCmd[7] = 0;
 	rcCmd[8] = 0;
 	rcCmd[9] = 0;
-	
+
 	memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
 	io_hdr.interface_id = 'S';
 	io_hdr.cmd_len = sizeof(rcCmd);
@@ -261,10 +260,10 @@ xdd_sg_read_capacity(worker_data_t *wdp) {
 	}
 	status = sg_err_category3(&io_hdr);
 	if (SG_ERR_CAT_MEDIA_CHANGED == status)
-		return(FAILED); 
+		return(FAILED);
 	else if (SG_ERR_CAT_CLEAN != status) {
 		fprintf(stderr,"read capacity error");
-		return(FAILED); 
+		return(FAILED);
 	}
 
 	// Retrieve the number of sectors and the sector size from the buffer
@@ -273,7 +272,7 @@ xdd_sg_read_capacity(worker_data_t *wdp) {
 
 	return(SUCCESS);
 
-} // End of xdd_sg_read_capacity() 
+} // End of xdd_sg_read_capacity()
 
 /*----------------------------------------------------------------------------*/
 /* xdd_sg_set_reserved_size() - issued after open  - called from initialization.c
@@ -288,10 +287,10 @@ xdd_sg_set_reserved_size(target_data_t *tdp, int fd) {
 	status = ioctl(fd, SG_SET_RESERVED_SIZE, &reserved_size);
 	if (status < 0) {
 		fprintf(xgp->errout,"%s: xdd_sg_set_reserved_size: SG_SET_RESERVED_SIZE error - request for %d bytes denied",
-			xgp->progname, 
+			xgp->progname,
 			(tdp->td_block_size*tdp->td_reqsize));
 	}
-} // End of xdd_sg_set_reserved_size() 
+} // End of xdd_sg_set_reserved_size()
 
 /*----------------------------------------------------------------------------*/
 /* xdd_sg_get_version() - issued after open  - get the current version of SG
@@ -311,9 +310,9 @@ xdd_sg_get_version(target_data_t *tdp, int fd) {
 } // End of xdd_sg_get_version()
 
 /*----------------------------------------------------------------------------*/
-/* sg_print_opcode() 
+/* sg_print_opcode()
  */
-static void 
+static void
 print_opcode(int opcode, FILE *outp) {
 
     const char **table = commands[ group(opcode) ];
@@ -334,9 +333,9 @@ print_opcode(int opcode, FILE *outp) {
 } // End of sg_print_opcode()
 
 /*----------------------------------------------------------------------------*/
-/* sg_print_command() 
+/* sg_print_command()
  */
-void 
+void
 sg_print_command (const unsigned char * command, FILE *outp) {
     int i,s;
     print_opcode(command[0], outp);
@@ -346,9 +345,9 @@ sg_print_command (const unsigned char * command, FILE *outp) {
 } // End of sg_print_command()
 
 /*----------------------------------------------------------------------------*/
-/* sg_print_status() 
+/* sg_print_status()
  */
-void 
+void
 sg_print_status (int masked_status, FILE *outp) {
     /* status = (status >> 1) & 0xf; */ /* already done */
     fprintf(outp, "%s ",statuses[masked_status]);
@@ -357,10 +356,10 @@ sg_print_status (int masked_status, FILE *outp) {
 /*----------------------------------------------------------------------------*/
 /* sg_print_sense() - Print sense information
  */
-void 
-sg_print_sense(const char * leadin, 
+void
+sg_print_sense(const char * leadin,
 					const unsigned char * sense_buffer,
-                    int sb_len, 
+                    int sb_len,
 					FILE *outp)
 {
     int i, s;
@@ -439,12 +438,12 @@ sg_print_sense(const char * leadin,
         if (leadin)
             fprintf(outp, "%s: ", leadin);
         if (sense_buffer[0] < 15)
-            fprintf(outp, 
+            fprintf(outp,
 	    	    "old sense: key %s\n", snstext[sense_buffer[0] & 0x0f]);
         else
             fprintf(outp, "sns = %2x %2x\n", sense_buffer[0], sense_buffer[2]);
 
-        fprintf(outp, "Non-extended sense class %d code 0x%0x ", 
+        fprintf(outp, "Non-extended sense class %d code 0x%0x ",
 		sense_class, code);
         s = 4;
     }
@@ -463,7 +462,7 @@ sg_print_sense(const char * leadin,
 /*----------------------------------------------------------------------------*/
 /* sg_print_host_status()
  */
-void 
+void
 sg_print_host_status(int host_status, FILE *outp)
 {   static int maxcode=0;
     int i;
@@ -478,12 +477,12 @@ sg_print_host_status(int host_status, FILE *outp)
         return;
     }
     fprintf(outp, "(%s) ",hostbyte_table[host_status]);
-} // End of sg_print_host_status() 
+} // End of sg_print_host_status()
 
 /*----------------------------------------------------------------------------*/
 /* sg_print_driver_status()
  */
-void 
+void
 sg_print_driver_status(int driver_status, FILE *outp)
 {
     static int driver_max =0 , suggest_max=0;
@@ -501,31 +500,31 @@ sg_print_driver_status(int driver_status, FILE *outp)
     fprintf(outp, " (%s,%s) ",
             dr < driver_max  ? driverbyte_table[dr]:"invalid",
             su < suggest_max ? driversuggest_table[su]:"invalid");
-} // End of sg_print_driver_status() 
+} // End of sg_print_driver_status()
 
 /*----------------------------------------------------------------------------*/
-/* sg_chk_n_print3() 
+/* sg_chk_n_print3()
  */
-int 
-sg_chk_n_print3(const char *leadin, 
-				struct sg_io_hdr *hp, 
-				FILE *outp) 
+int
+sg_chk_n_print3(const char *leadin,
+				struct sg_io_hdr *hp,
+				FILE *outp)
 {
     return sg_chk_n_print(leadin, hp->masked_status, hp->host_status,
                           hp->driver_status, hp->sbp, hp->sb_len_wr, outp);
-} // End of sg_chk_n_print3() 
+} // End of sg_chk_n_print3()
 
 /*----------------------------------------------------------------------------*/
-/* sg_chk_n_print() 
+/* sg_chk_n_print()
  */
-int 
-sg_chk_n_print(const char * leadin, 
+int
+sg_chk_n_print(const char * leadin,
 				int masked_status,
-				int host_status, 
+				int host_status,
 				int driver_status,
-				const unsigned char * sense_buffer, 
+				const unsigned char * sense_buffer,
 				int sb_len,
-				FILE *outp) 
+				FILE *outp)
 {
 
     int done_leadin = 0;
@@ -570,27 +569,27 @@ sg_chk_n_print(const char * leadin,
             sg_print_sense(0, sense_buffer, sb_len, outp);
     }
     return 0;
-} // End of sg_chk_n_print() 
+} // End of sg_chk_n_print()
 
 /*----------------------------------------------------------------------------*/
-/* sg_err_category3() 
+/* sg_err_category3()
  */
-int 
+int
 sg_err_category3(struct sg_io_hdr * hp) {
-	return sg_err_category(hp->masked_status, 
+	return sg_err_category(hp->masked_status,
 							hp->host_status,
-							hp->driver_status, 
-							hp->sbp, 
+							hp->driver_status,
+							hp->sbp,
 							hp->sb_len_wr);
-} // End of sg_err_category3() 
+} // End of sg_err_category3()
 
 /*----------------------------------------------------------------------------*/
-/* sg_err_category() 
+/* sg_err_category()
  */
-int 
+int
 sg_err_category(int masked_status,
 					int host_status,
-					int driver_status, 
+					int driver_status,
 					const unsigned char * sense_buffer,
 					int sb_len)
 {
@@ -625,6 +624,4 @@ sg_err_category(int masked_status,
             return SG_ERR_CAT_TIMEOUT;
     }
     return SG_ERR_CAT_OTHER;
-} // End of sg_err_category() 
-#endif
- 
+} // End of sg_err_category()

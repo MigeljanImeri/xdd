@@ -15,21 +15,7 @@
 
 #include "config.h"
 #include "xdd_base_version.h"
-#if WIN32
-#include "xint_win32.h"
-#elif defined(LINUX)
 #include "xint_linux.h"
-#elif DARWIN
-#include "xint_darwin.h"
-#elif FREEBSD
-#include "xint_freebsd.h"
-#elif SOLARIS
-#include "xint_solaris.h"
-#elif AIX
-#include "xint_aix.h"
-#elif IRIX
-#include "xint_irix.h"
-#endif
 
 // #include "xint_common.h"
 #include "xint_plan.h"
@@ -47,4 +33,3 @@
  *
  * vim: ts=4 sts=4 sw=4 noexpandtab
  */
-

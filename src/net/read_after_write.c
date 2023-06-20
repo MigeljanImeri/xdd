@@ -34,26 +34,9 @@
 void
 xdd_raw_err(char const *fmt, ...) {
 #ifdef ndef
-#ifdef WIN32
-	LPVOID lpMsgBuf;
-#endif
     fputs(fmt,xgp->errout);
 	perror("reason");
 	return;
-#ifdef WIN32 /* Windows environment, actually */
-    fprintf(xgp->errout, "last error was %d\n", WSAGetLastError());
-	FormatMessage( 
-			FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-			FORMAT_MESSAGE_FROM_SYSTEM | 
-			FORMAT_MESSAGE_IGNORE_INSERTS,
-			NULL,
-			WSAGetLastError(),
-			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-			(LPTSTR) &lpMsgBuf,
-			0,
-			NULL);
-		fprintf(xgp->errout,"Reason: %s",lpMsgBuf);
-#endif /* WIN32 */
 #endif // ndef
 } /* end of raw_err() */
 /*----------------------------------------------------------------------*/
@@ -90,10 +73,10 @@ xdd_raw_setup_reader_socket(target_data_t *tdp) {
 	}
 	rawp->raw_addr = ntohl(rawp->raw_sname.sin_addr.s_addr);
 	rawp->raw_port = ntohs(rawp->raw_sname.sin_port);
-	fprintf(stderr,"%s: Reader Hostname is %s\n\tSocket address is 0x%x = %s\n\tPort %d <0x%x>\n", 
+	fprintf(stderr,"%s: Reader Hostname is %s\n\tSocket address is 0x%x = %s\n\tPort %d <0x%x>\n",
 		xgp->progname,
 		rawp->raw_myhostname,
-		rawp->raw_sname.sin_addr.s_addr, 
+		rawp->raw_sname.sin_addr.s_addr,
 		inet_ntoa(rawp->raw_sname.sin_addr),
 		rawp->raw_sname.sin_port,rawp->raw_port);
 	/* All set; prepare to accept connection requests */
@@ -106,10 +89,6 @@ xdd_raw_setup_reader_socket(target_data_t *tdp) {
 } /* end of xdd_raw_setup_reader_socket() */
 /*----------------------------------------------------------------------*/
 /* xdd_raw_sockets_init() - for read-after-write operations
- *
- * Windows requires the WinSock startup routine to be run
- * before running a bunch of socket routines.  We encapsulate
- * that here in case some other environment needs something similar.
  *
  * Returns true if startup was successful, false otherwise.
  *
@@ -124,39 +103,6 @@ xdd_raw_sockets_init(target_data_t *tdp) {
 
 
 	rawp = p->rawp;
-#ifdef WIN32
-	WSADATA wsaData; /* Data structure used by WSAStartup */
-	int wsastatus; /* status returned by WSAStartup */
-	char *reason;
-	wsastatus = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (wsastatus != 0) { /* Error in starting the network */
-		switch (wsastatus) {
-		case WSASYSNOTREADY:
-			reason = "Network is down";
-			break;
-		case WSAVERNOTSUPPORTED:
-			reason = "Request version of sockets <2.2> is not supported";
-			break;
-		case WSAEINPROGRESS:
-			reason = "Another Windows Sockets operation is in progress";
-			break;
-		case WSAEPROCLIM:
-			reason = "The limit of the number of sockets tasks has been exceeded";
-			break;
-		case WSAEFAULT:
-			reason = "Program error: pointer to wsaData is not valid";
-			break;
-		default:
-			reason = "Unknown error code";
-			break;
-		};
-		fprintf(xgp->errout,"%s: Error initializing network connection\nReason: %s\n",
-			xgp->progname, reason);
-		fflush(xgp->errout);
-		WSACleanup();
-		return(FALSE);
-	}
-#endif
 #endif // ndef
 	return(TRUE);
 } /* end of xdd_raw_sockets_init() */
@@ -210,18 +156,7 @@ xdd_raw_reader_init(target_data_t *tdp) {
 	rawp->raw_active = rawp->raw_readset;
 	rawp->raw_current_csd = rawp->raw_next_csd = 0;
 	/* Find out how many sockets are in each set (berkely only) */
-#if (IRIX || WIN32 )
-    rawp->raw_nd = getdtablehi();
-#endif
-#if (LINUX || DARWIN)
     rawp->raw_nd = getdtablesize();
-#endif
-#if (AIX)
-	rawp->raw_nd = FD_SETSIZE;
-#endif
-#if (SOLARIS )
-	rawp->raw_nd = FD_SETSIZE;
-#endif
 	rawp->raw_msg_recv = 0;
 	rawp->raw_msg_last_sequence = 0;
 #endif // ndef
@@ -242,12 +177,9 @@ xdd_raw_read_wait(worker_data_t *wdp) {
 
 
 	rawp = p->rawp;
-#if (IRIX || WIN32 )
-	rawp->raw_nd = getdtablehi();
-#endif
 	status = select(rawp->raw_nd, &rawp->raw_readset, NULL, NULL, NULL);
 	/* Handle all the descriptors that are ready */
-	/* There are two type of sockets: the one sd socket and multiple 
+	/* There are two type of sockets: the one sd socket and multiple
 		* client sockets. We first check to see if the sd is in the readset.
 		* If so, this means that a client is trying to make a new connection
 		* in which case we need to issue an accept to establish the connection
@@ -270,7 +202,7 @@ xdd_raw_read_wait(worker_data_t *wdp) {
 		} /* end of WHILE loop that finds the next csd entry */
 	} /* End of processing an incoming connection */
 	/* This section will check to see which of the Client Socket Descriptors
-		* are in the readset. For those csd's that are ready, a recv is issued to 
+		* are in the readset. For those csd's that are ready, a recv is issued to
 		* receive the incoming data. The clock is then read from nclk() and the
 		* new clock value is sent back to the client.
 		*/
@@ -332,7 +264,7 @@ xdd_raw_setup_writer_socket(target_data_t *tdp) {
 
 
 	rawp = p->rawp;
-    /* Create the socket and set some options */    
+    /* Create the socket and set some options */
 	rawp->raw_sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (rawp->raw_sd < 0) {
 		xdd_raw_err("error opening socket for RAW writer");
@@ -421,8 +353,3 @@ xdd_raw_writer_send_msg(worker_data_t *wdp) {
 #endif // ndef
 	return(TRUE);
 } /* end of xdd_raw_writer_send_msg() */
- 
- 
- 
- 
- 

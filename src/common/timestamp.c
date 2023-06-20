@@ -20,14 +20,14 @@
 /* xdd_ts_overhead() - determine time stamp overhead
  */
 void
-xdd_ts_overhead(struct xdd_ts_header *ts_hdrp) { 
+xdd_ts_overhead(struct xdd_ts_header *ts_hdrp) {
 	int32_t  i;
 	nclk_t  tv[101];
 	ts_hdrp->tsh_timer_oh = 0;
 	for (i = 0; i < 101; i++) {
 		nclk_now(&tv[i]);
 	}
-	for (i = 0; i < 100; i++) 
+	for (i = 0; i < 100; i++)
 		ts_hdrp->tsh_timer_oh += (tv[i+1]-tv[i]);
 	ts_hdrp->tsh_timer_oh /= 100;
 	if (xgp->global_options & GO_TIMER_INFO) { /* only display this information if requested */
@@ -38,9 +38,9 @@ xdd_ts_overhead(struct xdd_ts_header *ts_hdrp) {
 } /* End of xdd_ts_overhead() */
 /*----------------------------------------------------------------------------*/
 /* xdd_ts_setup() - set up the time stamping
- * If time stamping is already turned on for this target then we need to make 
- * sure that the size of the time stamp table is adequate and enlarge it if 
- * necessary. 
+ * If time stamping is already turned on for this target then we need to make
+ * sure that the size of the time stamp table is adequate and enlarge it if
+ * necessary.
  */
 void
 xdd_ts_setup(target_data_t *tdp) {
@@ -59,7 +59,7 @@ xdd_ts_setup(target_data_t *tdp) {
 
 	// Calculate the size of the timestamp table needed for this entire run
 	tsp->ts_size = (tdp->td_planp->passes * tdp->td_target_ops) + tdp->td_queue_depth;
-	if (tsp->ts_options & (TS_TRIGTIME | TS_TRIGOP)) 
+	if (tsp->ts_options & (TS_TRIGTIME | TS_TRIGOP))
 		tsp->ts_options &= ~TS_ALL; /* turn off the "time stamp all operations" flag if a trigger was requested */
 	if (tsp->ts_options & TS_TRIGTIME) { /* adjust the trigger time to an actual local time */
 		tsp->ts_trigtime *= BILLION;
@@ -67,7 +67,7 @@ xdd_ts_setup(target_data_t *tdp) {
 	}
 
 	/* Calculate size of the time stamp table and malloc it */
-	tt_entries = tsp->ts_size; 
+	tt_entries = tsp->ts_size;
 	if (tt_entries < ((tdp->td_planp->passes * tdp->td_target_ops) + tdp->td_queue_depth)) { /* Display a NOTICE message if ts_wrap or ts_oneshot have not been specified to compensate for a short time stamp buffer */
 		if (((tsp->ts_options & TS_WRAP) == 0) &&
 			((tsp->ts_options & TS_ONESHOT) == 0)) {
@@ -81,7 +81,6 @@ xdd_ts_setup(target_data_t *tdp) {
 	}
 	/* calculate the total size in bytes of the time stamp table */
 	tt_bytes = (int)((sizeof(struct xdd_ts_header)) + (tt_entries * sizeof(struct xdd_ts_tte)));
-#if (LINUX || SOLARIS || AIX || DARWIN)
 	tdp->td_ts_table.ts_hdrp = (struct xdd_ts_header *)valloc(tt_bytes);
 	if (xgp->global_options & GO_DEBUG_TS) {
 		fprintf(stderr,"DEBUG_TS: %lld: xdd_ts_setup: Target: %d: Worker: -: TS INITIALIZATION "
@@ -92,10 +91,7 @@ xdd_ts_setup(target_data_t *tdp) {
 			(int)tt_entries);
 
 	}
-		
-#else
-	tdp->td_ts_table.ts_hdrp = (struct xdd_ts_header *)malloc(tt_bytes);
-#endif
+
 	if (tdp->td_ts_table.ts_hdrp == 0) {
 		fprintf(xgp->errout,"%s: xdd_ts_setup: Target %d: ERROR: Cannot allocate %d bytes of memory for timestamp table\n",
 			xgp->progname,
@@ -123,14 +119,14 @@ xdd_ts_setup(target_data_t *tdp) {
         /* Set the XDD Version into the timestamp header */
         tdp->td_ts_table.ts_hdrp->tsh_magic = 0xDEADBEEF;
         snprintf(tdp->td_ts_table.ts_hdrp->tsh_version, sizeof(tdp->td_ts_table.ts_hdrp->tsh_version), "%s", PACKAGE_STRING);
-        
+
 	/* init entries in the trace table header */
 
 	tdp->td_ts_table.ts_hdrp->tsh_target_thread_id = tdp->td_pid;
 	tdp->td_ts_table.ts_hdrp->tsh_res = cycleval;
 	tdp->td_ts_table.ts_hdrp->tsh_reqsize = tdp->td_xfer_size;
 	tdp->td_ts_table.ts_hdrp->tsh_blocksize = tdp->td_block_size;
-	strcpy(tdp->td_ts_table.ts_hdrp->tsh_id, xgp->id); 
+	strcpy(tdp->td_ts_table.ts_hdrp->tsh_id, xgp->id);
 	tdp->td_ts_table.ts_hdrp->tsh_range = tdp->td_seekhdr.seek_range;
 	tdp->td_ts_table.ts_hdrp->tsh_start_offset = tdp->td_start_offset;
 	tdp->td_ts_table.ts_hdrp->tsh_target_offset = tdp->td_planp->target_offset;
@@ -189,14 +185,14 @@ xdd_ts_setup(target_data_t *tdp) {
 			(void *)tdp->td_ts_table.ts_hdrp,
 			(int)tt_entries);
 	}
-		
+
 	if (xgp->global_options & GO_DEBUG_TS) {
 	   	xdd_show_ts_table(&tdp->td_ts_table, tdp->td_target_number);
 	}
 	return;
 } /* end of xdd_ts_setup() */
 /*----------------------------------------------------------------------------*/
-/* xdd_ts_write() - write the timestamp entried to a file. 
+/* xdd_ts_write() - write the timestamp entried to a file.
  */
 void
 xdd_ts_write(target_data_t *tdp) {
@@ -245,14 +241,14 @@ xdd_ts_cleanup(struct xdd_ts_header *ts_hdrp) {
 } /* end of xdd_ts_cleanup() */
 
 /*----------------------------------------------------------------------------*/
-/* xdd_ts_reports() - Generate the time stamp reports.    
+/* xdd_ts_reports() - Generate the time stamp reports.
  *    In this section disk_io_time is the time from the start of
- *    I/O to the end of the I/O. The Relative I/O time is 
+ *    I/O to the end of the I/O. The Relative I/O time is
  *    the time from time 0 to the end of the current I/O.
  *    The Dead Time is the time from the end of an I/O to
  *    the start of the next I/O - time between I/O.
  * IMPORTANT NOTE: All times are in nclk units of nanoseconds.
- *    
+ *
  */
 void
 xdd_ts_reports(target_data_t *tdp) {
@@ -291,10 +287,6 @@ xdd_ts_reports(target_data_t *tdp) {
 	tsp = &tdp->td_ts_table;
 	tsfp = tsp->ts_tsfp;
     ts_hdrp = tdp->td_ts_table.ts_hdrp;
-#ifdef WIN32 /* This is required to circumvent the problem of mulitple streams to multiple files */
-    /* We need to wait for the previous thread to finish writing its ts report and close the output stream before we can continue */
-    WaitForSingleObject(tsp->ts_serializer_mutex,INFINITE);
-#endif
     if(tsp->ts_options & TS_SUPPRESS_OUTPUT)
 	return;
     if (!(tdp->td_current_state & TARGET_CURRENT_STATE_PASS_COMPLETE)) {
@@ -338,18 +330,18 @@ xdd_ts_reports(target_data_t *tdp) {
     }
     if (tsp->ts_options & TS_DETAILED) { /* Generate the detailed and summary report */
 	if ((tsp->ts_options & TS_WRAP) || (tsp->ts_options & TS_ONESHOT)) {
-	    if (ts_hdrp->tsh_tte_indx == 0) 
+	    if (ts_hdrp->tsh_tte_indx == 0)
 		indx = ts_hdrp->tsh_tt_size - 1;
 	    else indx = ts_hdrp->tsh_tte_indx - 1;
 	    fprintf(tsfp, "Last time stamp table entry, %lld\n",
 		    (long long)indx);
 	}
-	
+
 	fprintf(tsfp,"Start of DETAILED Time Stamp Report, Number of entries, %lld, Picoseconds per clock tick, %lld, delta, %lld\n",
 		(long long)ts_hdrp->tsh_numents,
 		(long long)ts_hdrp->tsh_res,
 		(long long)ts_hdrp->tsh_delta);
-	
+
 	// Print a header line with the Quantities as they appear across the page
 	fprintf(tsfp,"WorkerThread");
 	fprintf(tsfp,"WorkerThreadID");
@@ -407,7 +399,7 @@ xdd_ts_reports(target_data_t *tdp) {
 	fprintf(tsfp,"\n");
 	fflush(tsfp);
     }
-    
+
     /* Scan the time stamp table and calculate the numbers */
     count = 0;
     hi_dist = 0;
@@ -429,12 +421,12 @@ xdd_ts_reports(target_data_t *tdp) {
 		ts_hdrp->tsh_blocksize = tdp->td_block_size;
 	    }
 	    if (ts_hdrp->tsh_tte[i].tte_byte_offset  > ts_hdrp->tsh_tte[i-1].tte_byte_offset) {
-		distance[i] = (ts_hdrp->tsh_tte[i].tte_byte_offset - 
-			       (ts_hdrp->tsh_tte[i-1].tte_byte_offset + 
+		distance[i] = (ts_hdrp->tsh_tte[i].tte_byte_offset -
+			       (ts_hdrp->tsh_tte[i-1].tte_byte_offset +
 				(ts_hdrp->tsh_reqsize)));
 	    } else {
-		distance[i] = (ts_hdrp->tsh_tte[i-1].tte_byte_offset - 
-			       (ts_hdrp->tsh_tte[i].tte_byte_offset + 
+		distance[i] = (ts_hdrp->tsh_tte[i-1].tte_byte_offset -
+			       (ts_hdrp->tsh_tte[i].tte_byte_offset +
 				(ts_hdrp->tsh_reqsize)));
 	    }
 	    loop_time = ts_hdrp->tsh_tte[i].tte_disk_end - ts_hdrp->tsh_tte[i-1].tte_disk_end;
@@ -446,7 +438,7 @@ xdd_ts_reports(target_data_t *tdp) {
 	    if (ts_hdrp->tsh_tte[i].tte_pass_number > ts_hdrp->tsh_tte[i-1].tte_pass_number) {
 		fprintf(tsfp,"\n");
 	    }
-	} else { 
+	} else {
 	    total_distance += distance[i];
 	    if (hi_dist < distance[i]) hi_dist = distance[i];
 	    if (lo_dist > distance[i]) lo_dist = distance[i];
@@ -458,11 +450,11 @@ xdd_ts_reports(target_data_t *tdp) {
 	disk_fio_time = (double)disk_io_time[i];
 	frelative_time = (double)relative_time;
 	floop_time = (double)loop_time;
-	if (disk_fio_time > 0.0) 
+	if (disk_fio_time > 0.0)
 	    disk_irate = ((ts_hdrp->tsh_reqsize)/(disk_fio_time / BILLION))/1000000.0;
 	else disk_irate = 0.0;
 	net_fio_time = (double)net_io_time[i];
-	if (net_fio_time > 0.0) 
+	if (net_fio_time > 0.0)
 	    net_irate = ((ts_hdrp->tsh_reqsize)/(net_fio_time / BILLION))/1000000.0;
 	else net_irate = 0.0;
 	if (tsp->ts_options & TS_DETAILED) { /* Print the detailed report */
@@ -471,55 +463,55 @@ xdd_ts_reports(target_data_t *tdp) {
 	    net_start_ts = ts_hdrp->tsh_tte[i].tte_net_start + ts_hdrp->tsh_delta;
 	    net_end_ts = ts_hdrp->tsh_tte[i].tte_net_end + ts_hdrp->tsh_delta;
 	    switch (ts_hdrp->tsh_tte[i].tte_op_type) {
-		case SO_OP_READ: 
-		case TASK_OP_TYPE_READ: 
-		    opc="r"; 
+		case SO_OP_READ:
+		case TASK_OP_TYPE_READ:
+		    opc="r";
 		    break;
-		    
-		case SO_OP_WRITE: 
-		case TASK_OP_TYPE_WRITE: 
-		    opc="w"; 
+
+		case SO_OP_WRITE:
+		case TASK_OP_TYPE_WRITE:
+		    opc="w";
 		    break;
-		case SO_OP_WRITE_VERIFY: 
-		    opc="v"; 
+		case SO_OP_WRITE_VERIFY:
+		    opc="v";
 		    break;
-		case SO_OP_NOOP: 
-		case TASK_OP_TYPE_NOOP: 
-		    opc="n"; 
+		case SO_OP_NOOP:
+		case TASK_OP_TYPE_NOOP:
+		    opc="n";
 		    break;
-		case SO_OP_EOF: 
-		case TASK_OP_TYPE_EOF: 
-		    opc="e"; 
+		case SO_OP_EOF:
+		case TASK_OP_TYPE_EOF:
+		    opc="e";
 		    break;
-		default: 
-		    sprintf(opc2,"0x%02x",ts_hdrp->tsh_tte[i].tte_op_type); 
-		    opc=opc2; 
+		default:
+		    sprintf(opc2,"0x%02x",ts_hdrp->tsh_tte[i].tte_op_type);
+		    opc=opc2;
 		    break;
 	    }
-	    
+
 	    fprintf(tsfp,"%d,",ts_hdrp->tsh_tte[i].tte_worker_thread_number);
 	    fprintf(tsfp,"%d,",ts_hdrp->tsh_tte[i].tte_thread_id);
 	    fprintf(tsfp,"%s,",opc);
-	    fprintf(tsfp,"%d,",ts_hdrp->tsh_tte[i].tte_pass_number); 
-	    fprintf(tsfp,"%lld,",(long long)ts_hdrp->tsh_tte[i].tte_op_number); 
-	    fprintf(tsfp,"%lld,",(long long)ts_hdrp->tsh_tte[i].tte_byte_offset); 
-	    fprintf(tsfp,"%lld,",(long long)distance[i]);  
-	    fprintf(tsfp,"%lld,",(long long)ts_hdrp->tsh_tte[i].tte_disk_xfer_size); 
-	    fprintf(tsfp,"%d,",  ts_hdrp->tsh_tte[i].tte_disk_processor_start); 
-	    fprintf(tsfp,"%d,",  ts_hdrp->tsh_tte[i].tte_disk_processor_end); 
-	    fprintf(tsfp,"%llu,",(unsigned long long)disk_start_ts);  
-	    fprintf(tsfp,"%llu,",(unsigned long long)disk_end_ts); 
-	    fprintf(tsfp,"%15.5f,",disk_fio_time/1000000000.0); 
+	    fprintf(tsfp,"%d,",ts_hdrp->tsh_tte[i].tte_pass_number);
+	    fprintf(tsfp,"%lld,",(long long)ts_hdrp->tsh_tte[i].tte_op_number);
+	    fprintf(tsfp,"%lld,",(long long)ts_hdrp->tsh_tte[i].tte_byte_offset);
+	    fprintf(tsfp,"%lld,",(long long)distance[i]);
+	    fprintf(tsfp,"%lld,",(long long)ts_hdrp->tsh_tte[i].tte_disk_xfer_size);
+	    fprintf(tsfp,"%d,",  ts_hdrp->tsh_tte[i].tte_disk_processor_start);
+	    fprintf(tsfp,"%d,",  ts_hdrp->tsh_tte[i].tte_disk_processor_end);
+	    fprintf(tsfp,"%llu,",(unsigned long long)disk_start_ts);
+	    fprintf(tsfp,"%llu,",(unsigned long long)disk_end_ts);
+	    fprintf(tsfp,"%15.5f,",disk_fio_time/1000000000.0);
 	    fprintf(tsfp,"%15.5f,",disk_irate);
-	    fprintf(tsfp,"%15.5f,",frelative_time/1000000000.0); 
+	    fprintf(tsfp,"%15.5f,",frelative_time/1000000000.0);
 	    fprintf(tsfp,"%15.5f,",floop_time/1000000000.0);
 	    if (tdp->td_target_options & TO_ENDTOEND) {
-		fprintf(tsfp,"%lld,",(long long)ts_hdrp->tsh_tte[i].tte_net_xfer_size); 
-		fprintf(tsfp,"%d,",  ts_hdrp->tsh_tte[i].tte_net_processor_start); 
-		fprintf(tsfp,"%d,",  ts_hdrp->tsh_tte[i].tte_net_processor_end); 
-		fprintf(tsfp,"%llu,",(unsigned long long)net_start_ts);  
-		fprintf(tsfp,"%llu,",(unsigned long long)net_end_ts); 
-		fprintf(tsfp,"%15.5f,",net_fio_time/1000000000.0); 
+		fprintf(tsfp,"%lld,",(long long)ts_hdrp->tsh_tte[i].tte_net_xfer_size);
+		fprintf(tsfp,"%d,",  ts_hdrp->tsh_tte[i].tte_net_processor_start);
+		fprintf(tsfp,"%d,",  ts_hdrp->tsh_tte[i].tte_net_processor_end);
+		fprintf(tsfp,"%llu,",(unsigned long long)net_start_ts);
+		fprintf(tsfp,"%llu,",(unsigned long long)net_end_ts);
+		fprintf(tsfp,"%15.5f,",net_fio_time/1000000000.0);
 		fprintf(tsfp,"%15.3f",net_irate);
 	    }
 	    fprintf(tsfp,"\n");
@@ -531,7 +523,7 @@ xdd_ts_reports(target_data_t *tdp) {
     free(distance);
     free(disk_io_time);
     free(net_io_time);
-    
+
     if (tsp->ts_options & TS_DETAILED)  /* Print the detailed report trailer */
 	fprintf(tsfp,"End of DETAILED Time Stamp Report\n");
     fflush(tsfp);
@@ -548,20 +540,20 @@ xdd_ts_reports(target_data_t *tdp) {
 	}
 	fprintf(tsfp, "Start of SUMMARY Time Stamp Report\n");
 	fflush(tsfp);
-	
+
 	/* display the results */
 	if (ts_hdrp->tsh_blocksize > 0) {
 	    fprintf(tsfp,"Average seek distance in %d byte blocks, %lld, request size in blocks, %d\n",
-		    ts_hdrp->tsh_blocksize, 
+		    ts_hdrp->tsh_blocksize,
 		    (long long)mean_distance,
 		    ts_hdrp->tsh_reqsize/ts_hdrp->tsh_blocksize);
 	    fflush(tsfp);
 	} else {
 	    fprintf(tsfp,"No average seek distance with 0 byte blocks\n");
 	}
-	
+
 	fprintf(tsfp,"Range:  Longest seek distance in blocks, %lld, shortest seek distance in blocks, %lld\n",
-		(long long)hi_dist, 
+		(long long)hi_dist,
 		(long long)lo_dist);
 	fflush(tsfp);
 	fmean_iotime = (double)mean_iotime;
@@ -577,9 +569,6 @@ xdd_ts_reports(target_data_t *tdp) {
     fflush(tsfp);
     if (tsfp != stdout)
 	fclose(tsfp);
-#ifdef WIN32 /* Allow the next thread to write its file */
-    ReleaseMutex(tsp->ts_serializer_mutex);
-#endif
 } /* end of xdd_ts_reports() */
 
 /*

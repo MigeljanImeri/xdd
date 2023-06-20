@@ -37,14 +37,7 @@ xint_target_init(target_data_t *tdp) {
 //	nclk_t		TimeDelta;		// Used the init the Global Clock
 //	uint32_t	sleepseconds;
 
-
-#if (AIX)
-	tdp->td_thread_id = thread_self();
-#elif (LINUX)
 	tdp->td_thread_id = syscall(SYS_gettid);
-#else
-	tdp->td_thread_id = tdp->td_pid;
-#endif
 
 	// Set the pass number
 	tdp->td_counters.tc_pass_number = 1;

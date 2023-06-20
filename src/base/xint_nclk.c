@@ -40,16 +40,9 @@ static bool     nclk_initialized = false;
  */
 void
 nclk_initialize(nclk_t *nclkp) {
-
-#if (LINUX)
 	// Since we use the "nanosecond" clocks in Linux,
 	// the number of nanoseconds per nanosecond "tick" is 1
     *nclkp =  ONE;
-#elif (SOLARIS || AIX || DARWIN || FREEBSD )
-	// Since we use the "gettimeofday" clocks in this OS,
-	// the number of nanoseconds per microsecond "tick" is 1,000
-    *nclkp =  THOUSAND;
-#endif
     nclk_initialized = true;
     return;
 }
@@ -78,10 +71,7 @@ nclk_shutdown(void) {
  *          */
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 void nclk_now(nclk_t *nclkp) {
-
-#if defined WIN32
-		QueryPerformanceCounter((LARGE_INTEGER *)nclkp);
-#elif HAVE_CLOCK_GETTIME && _POSIX_TIMERS
+#if HAVE_CLOCK_GETTIME && _POSIX_TIMERS
         struct timespec current_time;
         clock_gettime(CLOCK_REALTIME, &current_time);
         *nclkp =  (nclk_t)(((nclk_t)current_time.tv_sec * BILLION) +

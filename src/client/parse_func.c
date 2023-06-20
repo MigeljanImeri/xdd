@@ -352,12 +352,8 @@ xddfunc_datapattern(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 	unsigned char 		*tmpp;
 	int           		retval;
 	int32_t             stat_status;        // Return value of stat call
-#if (LINUX || DARWIN)
 	struct stat         stat_buf;           // Stat struct to get size of data file
 											// if DP_FILE_PATTERN/DP_WHOLEFILE_PATTERN is set
-#elif (AIX || SOLARIS)
-	struct stat64       stat_buf;
-#endif
 
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);
@@ -563,11 +559,7 @@ xddfunc_datapattern(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 			fprintf(xgp->errout, "%s: not enough arguments specified for the option '-datapattern'\n", xgp->progname);
 			return(0);
 		} else {
-#if (LINUX || DARWIN)
 			stat_status = stat((char *)argv[args+2], &stat_buf);
-#elif (AIX || SOLARIS)
-			stat_status = stat64((char *)argv[args+2], &stat_buf);
-#endif
 			if (stat_status < 0) {
 				fprintf(xgp->errout, "%s: could not open %s to use for the data pattern\n",
 					xgp->progname,

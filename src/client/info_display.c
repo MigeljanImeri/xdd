@@ -46,16 +46,11 @@ xdd_display_kmgt(FILE *out, long long int n, int block_size) {
  */
 void
 xdd_system_info(xdd_plan_t* planp, FILE *out) {
-#if (SOLARIS || IRIX || LINUX || AIX || FREEBSD)
 	int32_t page_size;
 	int32_t physical_pages;
 	int32_t memory_size;
 	struct rusage xdd_rusage;
 	char	*userlogin;
-#if ( IRIX )
-	inventory_t *inventp;
-	int64_t mem_size;
-#endif // IRIX inventory
 	uname(&planp->hostname);
 	userlogin = getlogin();
 	if (!userlogin)
@@ -63,17 +58,6 @@ xdd_system_info(xdd_plan_t* planp, FILE *out) {
 	fprintf(out, "Computer Name, %s, User Name, %s\n",planp->hostname.nodename, userlogin);
 	fprintf(out, "OS release and version, %s %s %s\n",planp->hostname.sysname, planp->hostname.release, planp->hostname.version);
 	fprintf(out, "Machine hardware type, %s\n",planp->hostname.machine);
-#if (SOLARIS)
-	xgp->number_of_processors = sysconf(_SC_NPROCESSORS_ONLN);
-	physical_pages = sysconf(_SC_PHYS_PAGES);
-	page_size = sysconf(_SC_PAGE_SIZE);
-	xgp->clock_tick = sysconf(_SC_CLK_TCK);
-#elif (AIX)
-	xgp->number_of_processors = sysconf(_SC_NPROCESSORS_ONLN);
-	physical_pages = sysconf(_SC_PHYS_PAGES);
-	page_size = sysconf(_SC_PAGE_SIZE);
-	xgp->clock_tick = sysconf(_SC_CLK_TCK);
-#elif (LINUX)
 	getrusage(RUSAGE_SELF, &xdd_rusage);
  //fprintf(stderr," maxrss  %d\n",xdd_rusage.ru_maxrss);        /* maximum resident set size */
  //fprintf(stderr," ixrss   %d\n",xdd_rusage.ru_ixrss);         /* integral shared memory size */
@@ -93,74 +77,12 @@ xdd_system_info(xdd_plan_t* planp, FILE *out) {
 	physical_pages = sysconf(_SC_PHYS_PAGES);
 	page_size = sysconf(_SC_PAGE_SIZE);
 	xgp->clock_tick = sysconf(_SC_CLK_TCK);
-#elif (IRIX )
-	xgp->number_of_processors = sysconf(_SC_NPROC_ONLN);
-	page_size = sysconf(_SC_PAGE_SIZE);
-	xgp->clock_tick = sysconf(_SC_CLK_TCK);
-	physical_pages = 0;
-	setinvent();
-	inventp = getinvent();
-	while (inventp) {
-		if ((inventp->inv_class == INV_MEMORY) &&
-			(inventp->inv_type == INV_MAIN_MB)) {
-			mem_size = inventp->inv_state;
-			mem_size *= (1024 * 1024);
-			physical_pages = mem_size / page_size;
-			break;
-		}
-		inventp = getinvent();
-	}
-#endif
 	fprintf(out, "Number of processors on this system, %d\n",xgp->number_of_processors);
 	memory_size = (physical_pages * (page_size/1024))/1024;
 	fprintf(out, "Page size in bytes, %d\n",page_size);
 	fprintf(out, "Number of physical pages, %d\n", physical_pages);
 	fprintf(out, "Megabytes of physical memory, %d\n", memory_size);
 	fprintf(out, "Clock Ticks per second, %d\n", xgp->clock_tick);
-#elif (WIN32)
-	SYSTEM_INFO system_info; /* Structure to receive system information */
-	OSVERSIONINFOEXA osversion_info;
-	char computer_name[256];
-	DWORD szcomputer_name = sizeof(computer_name);
-	char user_name[256];
-	DWORD szuser_name = sizeof(user_name);
-	MEMORYSTATUS memorystatus;
-	BOOL i;
-	LPVOID lpMsgBuf;
-
-
-	GetSystemInfo(&system_info);
-	osversion_info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-	i = GetVersionEx((LPOSVERSIONINFOA)&osversion_info);
-	if (i == 0) {
-			FormatMessage(
-				FORMAT_MESSAGE_ALLOCATE_BUFFER |
-				FORMAT_MESSAGE_FROM_SYSTEM |
-				FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL,
-				GetLastError(),
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-				(LPTSTR) &lpMsgBuf,
-				0,
-				NULL);
-			fprintf(xgp->errout,"%s: Error getting version\n",xgp->progname);
-			fprintf(xgp->errout,"reason:%s",lpMsgBuf);
-	}
-	GetComputerName(computer_name,&szcomputer_name);
-	GetUserName(user_name,&szuser_name);
-	GlobalMemoryStatus(&memorystatus);
-	xgp->clock_tick = sysconf(_SC_CLK_TCK);
-	fprintf(out, "Computer Name, %s, User Name, %s\n",computer_name, user_name);
-	fprintf(out, "Operating System Info: %s %d.%d Build %d %s\n",
-		((osversion_info.dwPlatformId == VER_PLATFORM_WIN32_NT) ? "NT":"Windows95"),
-		osversion_info.dwMajorVersion, osversion_info.dwMinorVersion,
-		osversion_info.dwBuildNumber,
-		osversion_info.szCSDVersion);
-	fprintf(out, "Page size in bytes, %d\n",system_info.dwPageSize);
-	fprintf(out, "Number of processors on this system, %d\n", system_info.dwNumberOfProcessors);
-	fprintf(out, "Megabytes of physical memory, %d\n", memorystatus.dwTotalPhys/(1024*1024));
-#endif // WIN32
-
 	fprintf(out,"Seconds before starting, %lld\n",(long long)planp->gts_seconds_before_starting);
 
 } /* end of xdd_system_info() */

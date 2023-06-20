@@ -15,10 +15,10 @@
 #include "xint.h"
 
 /*----------------------------------------------------------------------------*/
-/* xdd_target_thread_cleanup() - Perform termination processing of this 
+/* xdd_target_thread_cleanup() - Perform termination processing of this
  * this Target thread.
  * Return Values: 0 is good, -1 indicates an error but what are ya gonna do?
- * 
+ *
  */
 void
 xdd_target_thread_cleanup(target_data_t *tdp) {
@@ -35,7 +35,7 @@ xdd_target_thread_cleanup(target_data_t *tdp) {
 		// get the next Worker in this chain
 		wdp = wdp->wd_next_wdp;
 	}
-	
+
     /* We need to close all file descriptors opened by worker threads in islocal e2e connection */
     if (tdp->td_planp->plan_options & PLAN_ENDTOEND_LOCAL) {
         wdp = tdp->td_next_wdp;
@@ -53,11 +53,7 @@ xdd_target_thread_cleanup(target_data_t *tdp) {
         if (tdp->td_planp->plan_options & PLAN_ENDTOEND_LOCAL) {
             xdd_targetpass_e2e_remove_islocal(tdp);
         } else {
-#ifdef WIN32
-		    DeleteFile(tdp->td_target_full_pathname);
-#else
 		    unlink(tdp->td_target_full_pathname);
-#endif
 	    }
     }
 
@@ -92,6 +88,5 @@ xdd_target_thread_cleanup(target_data_t *tdp) {
             perror("reason");
 		}
 	}
-    
-} // End of xdd_target_thread_cleanup()
 
+} // End of xdd_target_thread_cleanup()

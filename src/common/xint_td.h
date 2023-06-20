@@ -54,11 +54,7 @@ struct xint_target_data {
 	int32_t   			td_pid;   			// My process ID
 	int32_t   			td_target_number;	// My target number
 	uint64_t			td_target_options; 	// I/O Options specific to each target
-#ifdef WIN32
-	HANDLE   			td_file_desc; 		// File HANDLE for the target device/file
-#else
 	int32_t   			td_file_desc;		// File Descriptor for the target device/file
-#endif
 	int32_t				td_open_flags;		// Flags used during open processing of a target
 	int32_t				td_xfer_size;  		// Number of bytes per request
 	int32_t				td_filetype;  		// Type of file: regular, device, socket, ...
@@ -165,11 +161,7 @@ struct xint_target_data {
 	struct xint_raw				*td_rawp;          	// RAW Data Structure Pointer
 	struct lockstep				*td_lsp;			// Pointer to the lockstep structure used by the lockstep option
 	struct xint_restart			*td_restartp;		// Pointer to the restart structure used by the restart monitor
-#if (LINUX || DARWIN)
 	struct stat					td_statbuf;			// Target File Stat buffer used by xdd_target_open()
-#elif (AIX || SOLARIS)
-	struct stat64				td_statbuf;			// Target File Stat buffer used by xdd_target_open()
-#endif
 	int32_t				td_op_delay; 		// Number of seconds to delay between operations
 
 	/* XNI Networking components */

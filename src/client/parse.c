@@ -584,7 +584,6 @@ xdd_get_throtp(target_data_t *tdp) {
 	//return(tdp->td_tsp);
 //
 //} /* End of xdd_get_tsp() */
-#if (LINUX)
 /*----------------------------------------------------------------------------*/
 /* xdd_linux_cpu_count() - return the number of CPUs on  this system
  */
@@ -610,7 +609,6 @@ xdd_linux_cpu_count(void) {
 	}
 	return(cpus);
 } /* end of xdd_linux_cpu_count() */
-#endif
 
 /*----------------------------------------------------------------------------*/
 /* xdd_cpu_count() - return the number of CPUs on  this system
@@ -618,18 +616,7 @@ xdd_linux_cpu_count(void) {
 int32_t
 xdd_cpu_count(void) {
 	int32_t		cpus; // Number of CPUs found
-#if (DARWIN)
-	cpus = 1;
-	fprintf(xgp->errout,"%s: WARNING: Multiple processors not supported in this release\n",xgp->progname);
-#elif (SOLARIS || AIX)
-	/* SOLARIS or AIX */
-	cpus = sysconf(_SC_NPROCESSORS_ONLN);
-#elif (IRIX || WIN32)
-	/* IRIX */
-	cpus = sysmp(MP_NPROCS,0);
-#elif (LINUX)
 	cpus = xdd_linux_cpu_count();
-#endif
 	return(cpus);
 } /* end of xdd_cpu_count() */
 

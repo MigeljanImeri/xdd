@@ -37,7 +37,7 @@
 #include "xint_read_after_write.h"
 // REMOVE LATER struct ptds;
 
-// Bit field definitions for the xdd_global_options - The "PLAN_XXXX" definitions are specifically for the Global Options 
+// Bit field definitions for the xdd_global_options - The "PLAN_XXXX" definitions are specifically for the Global Options
 
 #define PLAN_SYNCIO             0x0000000000000001ULL  /* Sync every nth I/O operation */
 #define PLAN_NOBARRIER          0x0000000000000002ULL  /* Do not use a barrier */
@@ -110,27 +110,27 @@ struct xint_plan {
 	pthread_t 		Restart_Thread;						// PThread struct for restart monitor
 	pthread_t 		Interactive_Thread;					// PThread struct for Interactive Control processor Thread
 
-// Thread Barriers 
+// Thread Barriers
 	pthread_mutex_t	barrier_chain_mutex;				/* Locking mutex for the barrier chain */
 	xdd_barrier_t	*barrier_chain_first;        		/* First barrier on the chain */
 	xdd_barrier_t	*barrier_chain_last;        		/* Last barrier on the chain */
 	int32_t			barrier_count;         				/* Number of barriers on the chain */
 
-	xdd_barrier_t	main_general_init_barrier;			// Barrier for xdd_main to make sure that the various support threads have initialized 
+	xdd_barrier_t	main_general_init_barrier;			// Barrier for xdd_main to make sure that the various support threads have initialized
 
 	xdd_barrier_t	main_targets_waitforstart_barrier;	// Barrier where all target threads go waiting for main to tell them to start
 
-	xdd_barrier_t	main_targets_syncio_barrier;    	// Barrier for syncio 
+	xdd_barrier_t	main_targets_syncio_barrier;    	// Barrier for syncio
 
 	xdd_barrier_t	main_results_final_barrier;        	// Barrier for the Results Manager to sync with xdd_main after all Target Threads have terminated
 
-	xdd_barrier_t	results_targets_startpass_barrier;	// Barrier for synchronizing target threads - all targets gather here at the beginning of a pass 
+	xdd_barrier_t	results_targets_startpass_barrier;	// Barrier for synchronizing target threads - all targets gather here at the beginning of a pass
 
-	xdd_barrier_t	results_targets_endpass_barrier;	// Barrier for synchronizing target threads - all targets gather here at the end of a pass 
+	xdd_barrier_t	results_targets_endpass_barrier;	// Barrier for synchronizing target threads - all targets gather here at the end of a pass
 
-	xdd_barrier_t	results_targets_display_barrier;	// Barrier for all Target Thereads to sync with the Results Manager while it displays information 
+	xdd_barrier_t	results_targets_display_barrier;	// Barrier for all Target Thereads to sync with the Results Manager while it displays information
 
-	xdd_barrier_t	results_targets_run_barrier;     	// Barrier for all Target Thereads to sync with the results manager at the end of the run 
+	xdd_barrier_t	results_targets_run_barrier;     	// Barrier for all Target Thereads to sync with the results manager at the end of the run
 
 	xdd_barrier_t	results_targets_waitforcleanup_barrier; // Barrier for all thereads to sync with the results manager when they have completed cleanup
 
@@ -140,35 +140,27 @@ struct xint_plan {
 
 
 // Variables used by the Results Manager
-	char			*format_string;						// Pointer to the format string used by the results_display() to display results 
+	char			*format_string;						// Pointer to the format string used by the results_display() to display results
 	char			results_header_displayed;			// 1 means that the header has been displayed, 0 means no
 	uint32_t		heartbeat_flags;					// Tell the heartbeat thread what to do and when
 #define	HEARTBEAT_ACTIVE	0x00000001					// The HEARTBEAT_ACTIVE is set by the heartbeat thread when it is running
-#define HEARTBEAT_HOLDOFF	0x00000002					// The results_manager will set HEARTBEAT_HOLDOFF bit when it wants to display pass results, 
+#define HEARTBEAT_HOLDOFF	0x00000002					// The results_manager will set HEARTBEAT_HOLDOFF bit when it wants to display pass results,
 											 			// and unset HEARTBEAT_HOLDOFF after everything is displayed
-#define HEARTBEAT_EXIT		0x00000004		 			// The results_manager will set HEARTBEAT_EXIT to tell heartbeat to exit 
+#define HEARTBEAT_EXIT		0x00000004		 			// The results_manager will set HEARTBEAT_EXIT to tell heartbeat to exit
 														//
-#ifdef WIN32
-	HANDLE			ts_serializer_mutex;        		/* needed to circumvent a Windows bug */
-	char			*ts_serializer_mutex_name;  		/* needed to circumvent a Windows bug */
-#endif
-
 	/* Target Specific variables */
 	target_data_t	*target_datap[MAX_TARGETS];			/* Pointers to the active Target Data Structs */
 	results_t		*target_average_resultsp[MAX_TARGETS];/* Results area for the "target" which is a composite of all its worker threads */
 	int64_t			target_errno[MAX_TARGETS];			// Is set by each target to indicate its final return code
 
-#ifdef LINUX
 	rlim_t	rlimit;
-#endif
-
 }; // End of Definition of the xdd_globals data structure
 typedef	struct 		xint_plan 	xdd_plan_t;
 
 xdd_plan_t* xint_plan_data_initialization();
 
 int xint_plan_start(xdd_plan_t* planp, xdd_occupant_t* occupant);
-	
+
 int xint_plan_start_targets(xdd_plan_t* planp);
 
 void xint_plan_start_results_manager(xdd_plan_t* planp);
@@ -178,7 +170,7 @@ void xint_plan_start_heartbeat(xdd_plan_t* planp);
 void xint_plan_start_restart_monitor(xdd_plan_t* planp);
 
 void xint_plan_start_interactive(xdd_plan_t* planp);
-	
+
 #endif
 /*
  * Local variables:

@@ -11,7 +11,6 @@
  *
  */
 
-#if LINUX 
 #include <linux/major.h>
 #include <sys/sysmacros.h>
 #include <ctype.h>
@@ -63,7 +62,7 @@ extern llse_loff_t llse_llseek(unsigned int fd,
 
 /* Feel free to copy and modify this GPL-ed code into your applications. */
 
-/* Version 0.84 (20010115) 
+/* Version 0.84 (20010115)
 	- all output now sent to stderr rather thatn stdout
 	- remove header files included in this file
 */
@@ -160,8 +159,8 @@ extern llse_loff_t llse_llseek(unsigned int fd,
 /* The following "print" functions send ACSII to stdout */
 extern void sg_print_command(const unsigned char *command, FILE *outp);
 extern void sg_print_sense(	const char *leadin,
-							const unsigned char *sense_buffer, 
-							int sb_len, 
+							const unsigned char *sense_buffer,
+							int sb_len,
 							FILE *outp);
 extern void sg_print_status(int masked_status, FILE *outp);
 extern void sg_print_host_status(int host_status, FILE *outp);
@@ -169,15 +168,15 @@ extern void sg_print_driver_status(int driver_status, FILE *outp);
 
 /* sg_chk_n_print() returns 1 quietly if there are no errors/warnings
    else it prints to standard output and returns 0. */
-extern int sg_chk_n_print(	const char *leadin, 
+extern int sg_chk_n_print(	const char *leadin,
 							int masked_status,
-							int host_status, 
+							int host_status,
 							int driver_status,
-							const unsigned char *sense_buffer, 
-							int sb_len, 
+							const unsigned char *sense_buffer,
+							int sb_len,
 							FILE *outp);
 
-/* The following function declaration is for the sg version 3 driver. 
+/* The following function declaration is for the sg version 3 driver.
    Only version 3 sg_err.c defines it. */
 struct sg_io_hdr;
 extern int sg_chk_n_print3(const char *leadin, struct sg_io_hdr *hp, FILE *outp);
@@ -192,18 +191,17 @@ extern int sg_chk_n_print3(const char *leadin, struct sg_io_hdr *hp, FILE *outp)
 #define SG_ERR_CAT_SENSE 98     /* Something else is in the sense buffer */
 #define SG_ERR_CAT_OTHER 99     /* Some other error/warning has occurred */
 
-extern int sg_err_category(int masked_status, 
+extern int sg_err_category(int masked_status,
 							int host_status,
-							int driver_status, 
+							int driver_status,
 							const unsigned char *sense_buffer,
 							int sb_len);
 
-/* The following function declaration is for the sg version 3 driver. 
+/* The following function declaration is for the sg version 3 driver.
    Only version 3 sg_err.c defines it. */
 extern int sg_err_category3(struct sg_io_hdr *hp);
 #endif
-#endif
- 
+
 //******************************************************************************
 /*  ASCII values for a number of symbolic constants, printing functions, etc.
 *
@@ -337,7 +335,7 @@ static const char * statuses[] = {
 // The following tables contain the ASCII strings for the most
 // common status and sense code combinations. Only a few of
 // these apply to disk storage devices but they are all here
-// just in case. 
+// just in case.
 //
 #define D 0x001  /* DIRECT ACCESS DEVICE (disk) */
 #define T 0x002  /* SEQUENTIAL ACCESS DEVICE (tape) */
@@ -586,20 +584,20 @@ static const char *snstext[] = {
                                    do not agree */
     "Key=15"                    /* Reserved */
 };
- 
+
 static const char * hostbyte_table[]={
 "DID_OK", "DID_NO_CONNECT", "DID_BUS_BUSY", "DID_TIME_OUT", "DID_BAD_TARGET",
 "DID_ABORT", "DID_PARITY", "DID_ERROR", "DID_RESET", "DID_BAD_INTR",
 "DID_PASSTHROUGH", "DID_SOFT_ERROR", NULL};
- 
+
 static const char * driverbyte_table[]={
 "DRIVER_OK", "DRIVER_BUSY", "DRIVER_SOFT",  "DRIVER_MEDIA", "DRIVER_ERROR",
 "DRIVER_INVALID", "DRIVER_TIMEOUT", "DRIVER_HARD", "DRIVER_SENSE", NULL};
 
 static const char * driversuggest_table[]={"SUGGEST_OK",
 "SUGGEST_RETRY", "SUGGEST_ABORT", "SUGGEST_REMAP", "SUGGEST_DIE",
-unknown,unknown,unknown, "SUGGEST_SENSE",NULL}; 
- 
+unknown,unknown,unknown, "SUGGEST_SENSE",NULL};
+
 /*
  * Local variables:
  *  indent-tabs-mode: t

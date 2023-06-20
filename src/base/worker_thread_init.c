@@ -46,13 +46,7 @@ xdd_worker_thread_init(worker_data_t *wdp) {
     // Get the Target Data Struct address as well
     tdp = wdp->wd_tdp;
 
-#if (AIX)
-	wdp->wd_thread_id = thread_self();
-#elif (LINUX)
 	wdp->wd_thread_id = syscall(SYS_gettid);
-#else
-	wdp->wd_thread_id = wdp->wd_pid;
-#endif
 
 	// The "my_current_state_mutex" is used by the WorkerThreads when checking or updating the state info
 	status = pthread_mutex_init(&tdp->td_current_state_mutex, 0);

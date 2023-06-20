@@ -9,9 +9,7 @@ include_directories(
 )
 
 # copied from configure.ac
-# removed __INTEL__ and _FILE_OFFSET_BITS=64
-add_compile_definitions(LINUX)
-add_compile_definitions(SG_IO)
+# removed __INTEL__, _FILE_OFFSET_BITS=64, LINUX, and SG_IO
 add_compile_definitions(_GNU_SOURCE)            # should probably move this to individual files that need it
 add_compile_definitions(PACKAGE_STRING="${PACKAGE_STRING}")
 add_compile_definitions(PACKAGE_VERSION="${PACKAGE_VERSION}")

@@ -15,20 +15,17 @@
  * used by the Worker Threads.
  */
 #include "xint.h"
-#ifdef DARWIN
-#include <sys/shm.h>
-#endif
 
 /*----------------------------------------------------------------------------*/
 /* xdd_init_io_buffers() - set up the I/O buffers
  * This routine will allocate the memory used as the I/O buffer for a Worker
- * Thread. The pointer to the buffer (wd_bufp) and the size of the buffer 
+ * Thread. The pointer to the buffer (wd_bufp) and the size of the buffer
  * (wd_buf_size) are set in the Worker Data Struct.
  *
  * This routine will return the pointer to the buffer upon success. If for
- * some reason the buffer cannot be allocated then NULL is returned. 
+ * some reason the buffer cannot be allocated then NULL is returned.
  *
- * For some operating systems, you can use a shared memory segment instead of 
+ * For some operating systems, you can use a shared memory segment instead of
  * a normal malloc/valloc memory chunk. This is done using the "-sharedmemory"
  * command line option.
  *
@@ -54,8 +51,8 @@
  *	|     |<-Header->|   data buffer                                       |
  *	+-----*----------*-----------------------------------------------------+
  *	      ^          ^
- *	      ^          +-e2e_datap     
- *	      +-e2e_hdrp 
+ *	      ^          +-e2e_datap
+ *	      +-e2e_hdrp
  */
 unsigned char *
 xdd_init_io_buffers(worker_data_t *wdp) {
@@ -66,9 +63,6 @@ xdd_init_io_buffers(worker_data_t *wdp) {
 	int					buffer_size;	// Size of buffer in bytes
 	int					page_size;		// Size of a page of memory
 	int					pages;			// Size of buffer in pages
-#ifdef WIN32
-	LPVOID lpMsgBuf; /* Used for the error messages */
-#endif
 
 	tdp = wdp->wd_tdp;
 	wdp->wd_bufp = NULL;
@@ -81,7 +75,7 @@ xdd_init_io_buffers(worker_data_t *wdp) {
 		pages++; // Round up to page size
 	if ((tdp->td_target_options & TO_ENDTOEND)) {
 		// Add one page for the e2e header
-		pages++; 
+		pages++;
 
 		// If its XNI, add another page for XNI, better would be for XNI to
 		// pack all of the header data (and do the hton, ntoh calls)
@@ -91,22 +85,15 @@ xdd_init_io_buffers(worker_data_t *wdp) {
 		}
 	}
 
-	
+
 	// This is the actual size of the I/O buffer
 	buffer_size = pages * page_size;
 
 	/* Check to see if we want to use a shared memory segment and allocate it using shmget() and shmat().
-	 * NOTE: This is not supported by all operating systems. 
+	 * NOTE: This is not supported by all operating systems.
 	 */
 	if (tdp->td_target_options & TO_SHARED_MEMORY) {
-#if (AIX || LINUX || SOLARIS || DARWIN || FREEBSD)
-	    /* In AIX we need to get memory in a shared memory segment to avoid
-	     * the system continually trying to pin each page on every I/O operation */
-#if (AIX)
-		buf_shmid = shmget(IPC_PRIVATE, buffer_size, IPC_CREAT | SHM_LGPAGE |SHM_PIN );
-#else
 		buf_shmid = shmget(IPC_PRIVATE, buffer_size, IPC_CREAT );
-#endif
 		if (buf_shmid < 0) {
 			fprintf(xgp->errout,"%s: Cannot create shared memory segment\n", xgp->progname);
 			perror("Reason");
@@ -124,53 +111,23 @@ xdd_init_io_buffers(worker_data_t *wdp) {
 		}
 		if (xgp->global_options & GO_REALLYVERBOSE)
 				fprintf(xgp->output,"Shared Memory ID allocated and attached, shmid=%d\n",buf_shmid);
-#elif (IRIX || WIN32 )
-		fprintf(xgp->errout,"%s: Shared Memory not supported on this OS - using valloc\n",
-			xgp->progname);
-		tdp->td_target_options &= ~TO_SHARED_MEMORY;
-#if (IRIX || SOLARIS || LINUX || AIX || DARWIN || FREEBSD)
 		bufp = valloc(buffer_size);
-#else
-		bufp = malloc(buffer_size);
-#endif
-#endif 
 	} else { /* Allocate memory the normal way */
-#if (AIX || LINUX)
 		posix_memalign((void **)&bufp, sysconf(_SC_PAGESIZE), buffer_size);
-#elif (IRIX || SOLARIS || LINUX || DARWIN || FREEBSD)
-		bufp = valloc(buffer_size);
-#else
-		bufp = malloc(buffer_size);
-#endif
 	}
 	/* Check to see if we really allocated some memory */
 	if (bufp == NULL) {
 		fprintf(xgp->errout,"%s: cannot allocate %d bytes of memory for I/O buffer\n",
 			xgp->progname,buffer_size);
 		fflush(xgp->errout);
-#ifdef WIN32 
-		FormatMessage( 
-			FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-			FORMAT_MESSAGE_FROM_SYSTEM | 
-			FORMAT_MESSAGE_IGNORE_INSERTS,
-			NULL,
-			GetLastError(),
-			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-			(LPTSTR) &lpMsgBuf,
-			0,
-			NULL);
-		fprintf(xgp->errout,"Reason:%s",lpMsgBuf);
-		fflush(xgp->errout);
-#else 
 		perror("Reason");
-#endif
 		return(NULL);
 	}
 	/* Memory allocation must have succeeded */
 
 	/* Lock all pages in memory */
 	xdd_lock_memory(bufp, buffer_size, "RW BUFFER");
-	
+
 	wdp->wd_bufp_allocated = TRUE;
 	wdp->wd_bufp = bufp;
 	wdp->wd_buf_size = buffer_size;
@@ -178,7 +135,7 @@ xdd_init_io_buffers(worker_data_t *wdp) {
 	return(bufp);
 } /* end of xdd_init_io_buffers() */
 
- 
+
 /*
  * Local variables:
  *  indent-tabs-mode: t
