@@ -29,3 +29,27 @@ jobs:
       run: sudo make -C ${{github.workspace}}/build install
     - name: run tests
       run: ${{github.workspace}}/build/run_tests.py
+
+  deb:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+    - name: apt update
+      run: sudo apt-get update
+    - uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: xfsprogs gnuplot net-tools numactl libnuma-dev xfslibs-dev bc time strace
+        version: 1.0
+    - name: configure
+      run: cmake -B ${{github.workspace}}/build
+    - name: make
+      run: make -C ${{github.workspace}}/build
+    - name: build deb
+      run: make -C ${{github.workspace}}/build package
+    - name: install deb
+      run: sudo apt install -y ${{github.workspace}}/build/xdd-*.deb
+    - name: run tests
+      run: ${{github.workspace}}/build/run_tests.py

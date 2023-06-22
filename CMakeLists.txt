@@ -109,7 +109,26 @@ if (RPMBUILD)
     set(CPACK_RPM_PACKAGE_GROUP "Benchmarking")
     set(CPACK_RPM_PACKAGE_URL "https://github.com/MigeljanImeri/xdd")
     set(CPACK_RPM_PACKAGE_DESCRIPTION "IO Test tool that can do so much more.")
-
-    include(CPack)
   endif()
+endif()
+
+# build DEB
+find_program(DPKGBUILD dpkg-buildpackage)
+if (DPKGBUILD)
+  message(STATUS "dpkg-buildpackage: ${DPKGBUILD}")
+
+  option(DPKG "Build DEB" ON)
+  if (DPKG)
+    set(CPACK_GENERATOR "DEB")
+    set(CPACK_DEBIAN_PACKAGE_NAME "${CMAKE_PROJECT_NAME}")
+    set(CPACK_DEBIAN_PACKAGE_VERSION "${CMAKE_PROJECT_VERSION}")
+    set(CPACK_DEBIAN_PACKAGE_SUMMARY "IO performace Test Tool dd with an X factor")
+    set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/MigeljanImeri/xdd")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "XDD Developers")
+  endif()
+endif()
+
+if ((RPMBUILD AND RPM) OR
+    (DPKGBUILD AND DPKG))
+    include(CPack)
 endif()
