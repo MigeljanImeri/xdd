@@ -1072,7 +1072,7 @@ const struct xni_protocol protocol_ib = {
 #endif
 
 #if HAVE_ENABLE_IB
-struct xni_protocol *xni_protocol_ib = &protocol_ib;
+struct xni_protocol *xni_protocol_ib = (struct xni_protocol *) &protocol_ib;
 #else
 struct xni_protocol *xni_protocol_ib = NULL;
 #endif
