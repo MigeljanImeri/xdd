@@ -93,3 +93,23 @@ if (DOXYGEN_FOUND)
       )
   endif()
 endif()
+
+# build RPM
+find_program(RPMBUILD rpmbuild)
+if (RPMBUILD)
+  message(STATUS "rpmbuild: ${RPMBUILD}")
+
+  option(RPM "Build RPM" ON)
+  if (RPM)
+    set(CPACK_GENERATOR "RPM")
+    set(CPACK_RPM_PACKAGE_NAME "${CMAKE_PROJECT_NAME}")
+    set(CPACK_RPM_PACKAGE_VERSION "${CMAKE_PROJECT_VERSION}")
+    set(CPACK_RPM_PACKAGE_SUMMARY "IO performace Test Tool dd with an X factor")
+    set(CPACK_RPM_PACKAGE_LICENSE "GPL-2.0")
+    set(CPACK_RPM_PACKAGE_GROUP "Benchmarking")
+    set(CPACK_RPM_PACKAGE_URL "https://github.com/MigeljanImeri/xdd")
+    set(CPACK_RPM_PACKAGE_DESCRIPTION "IO Test tool that can do so much more.")
+
+    include(CPack)
+  endif()
+endif()
