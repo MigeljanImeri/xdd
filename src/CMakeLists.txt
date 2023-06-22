@@ -1,3 +1,8 @@
+# place binaries here instead of src
+# set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+# set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
 include_directories(
   base bx client common compat fs net public xnet xni
   "${CMAKE_CURRENT_BINARY_DIR}/compat" # oonfig.h
