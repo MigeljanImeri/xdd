@@ -6,7 +6,7 @@
 - A C Compiler
 - Python 3+
 - libnuma (optional)
-- libverbs (optional)
+- libibverbs (optional)
 
 ## Build
 ```bash
