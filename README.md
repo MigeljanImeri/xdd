@@ -35,6 +35,13 @@ XDD will be built for use with
 with `-fno-omit-frame-pointer`. This can be disabled with
 `-DWITH_FLAMEGRAPH=Off`.
 
+### RPM/DEB Packages
+To build RPM and DEB packages, make sure `rpmbuild` or
+`dpkg-buildpackage` was discovered by CMake and run `make
+package`. The package file will be placed in the root build
+directory. Note that CPack does not seem to be able to handle having
+both package builders installed at the same time.
+
 ## Qdepth/Thread count advisory
 In XDD, the number of threads is often governed by the queue depth option
 or the thread count option.  The number of threads than may be created is
