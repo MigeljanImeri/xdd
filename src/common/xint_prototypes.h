@@ -178,12 +178,6 @@ void	nclk_shutdown(void);
 void	nclk_now(nclk_t *nclkp);
 int64_t	pclk_now(void);
 
-// xint_preallocate.c
-int32_t	xint_target_preallocate_for_os(target_data_t *p);
-int32_t	xint_target_preallocate_for_os(target_data_t *p);
-int32_t	xint_target_preallocate_for_os(target_data_t *p);
-int32_t	xint_target_preallocate(target_data_t *p);
-
 // xint_pretruncate.c
 int32_t	xint_target_pretruncate(target_data_t *p);
 

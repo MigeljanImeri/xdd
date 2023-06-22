@@ -12,10 +12,6 @@
  */
 #include "xint.h"
 
-#if HAVE_ENABLE_XFS
-int xgp_xfs_enabled;
-#endif
-
 xdd_global_data_t *xgp;
 
 /*----------------------------------------------------------------------------*/

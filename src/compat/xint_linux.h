@@ -55,19 +55,8 @@
 #endif
 
 /* Platform headers */
-#if HAVE_ENABLE_XFS && HAVE_XFS_XFS_H
-#include <xfs/xfs.h>
-#endif
-#if HAVE_ENABLE_XFS && HAVE_XFS_LIBXFS_H
-#include <xfs/libxfs.h>
-#endif
-#if XFS_ENABLED && !HAVE_ENABLE_XFS
-#error "ERROR: XFS Support is enabled, but the header support is not valid."
-#endif
-#if HAVE_LINUX_MAGIC_H && HAVE_DECL_XFS_SUPER_MAGIC
+#if HAVE_LINUX_MAGIC_H
 #include <linux/magic.h>
-#else
-#define XFS_SUPER_MAGIC 0x58465342
 #endif
 #ifdef HAVE_UTMPX_H
 #include <utmpx.h>

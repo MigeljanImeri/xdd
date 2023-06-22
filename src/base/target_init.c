@@ -54,9 +54,6 @@ xint_target_init(target_data_t *tdp) {
 	if (status)
 		return(-1);
 
-	/* Perform preallocation if needed */
-	xint_target_preallocate(tdp);
-
 	/* Perform pretruncation if needed */
 	xint_target_pretruncate(tdp);
 

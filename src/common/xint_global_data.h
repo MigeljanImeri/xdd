@@ -105,11 +105,6 @@ struct xdd_global_data {
 #define	XDD_RETURN_VALUE_CANCELED				5		// Run was canceled
 #define	XDD_RETURN_VALUE_IOERROR				6		// Run ended due to an I/O error
 
-// Inject a symbol into the namespace if xfs support is configured
-#if HAVE_ENABLE_XFS
-extern int xgp_xfs_enabled;
-#endif
-
 typedef	struct 		xdd_global_data 	xdd_global_data_t;
 
 extern  xdd_global_data_t   *xgp;						// pointer to the xdd global data that all routines use

@@ -166,7 +166,6 @@ xdd_show_target_data(target_data_t *tdp) {
     fprintf(stderr,"xdd_show_target_data: char                    td_random_init_state[256]\n");     // Random number generator state initalizer array 
     fprintf(stderr,"xdd_show_target_data: int32_t                 td_block_size=%d\n",tdp->td_block_size);              // Size of a block in bytes for this target 
     fprintf(stderr,"xdd_show_target_data: int32_t                 td_queue_depth=%d\n",tdp->td_queue_depth);             // Command queue depth for each target 
-    fprintf(stderr,"xdd_show_target_data: int64_t                 td_preallocate=%lld\n",(long long int)tdp->td_preallocate);             // File preallocation value 
     fprintf(stderr,"xdd_show_target_data: int32_t                 td_mem_align=%d\n",tdp->td_mem_align);               // Memory read/write buffer alignment value in bytes 
     fprintf(stderr,"xdd_show_target_data: struct heartbeat        td_hb=%p\n",(void *)tdp->td_planp);                    // Heartbeat data
     fprintf(stderr,"xdd_show_target_data: uint64_t                td_target_bytes_to_xfer_per_pass=%lld\n",(long long int)tdp->td_target_bytes_to_xfer_per_pass);     // Number of bytes to xfer per pass for the entire target (all qthreads)

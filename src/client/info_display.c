@@ -326,8 +326,6 @@ xdd_target_info(FILE *out, target_data_t *tdp) {
 		fprintf(out," enabled for %s verification.\n", (tdp->td_target_options & TO_VERIFY_LOCATION)?"Location":"Content");
 	else fprintf(out," disabled.\n");
 	fprintf(out,"\t\tDirect I/O, %s", (tdp->td_target_options & TO_DIO)?"enabled\n":"disabled\n");
-	fprintf(out, "\t\tPreallocation, %lld, %d-byte blocks, %lld, bytes\n", (long long int)tdp->td_preallocate, tdp->td_block_size,
-		(long long int)(tdp->td_preallocate * tdp->td_block_size));
 	fprintf(out, "\t\tPretruncation, %lld, %d-byte blocks, %lld bytes\n", (long long int)tdp->td_pretruncate, tdp->td_block_size,
 		(long long int)(tdp->td_pretruncate * tdp->td_block_size));
 	fprintf(out, "\t\tQueue Depth, %d\n",tdp->td_queue_depth);

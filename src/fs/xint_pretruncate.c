@@ -36,9 +36,7 @@ xint_target_pretruncate(target_data_t *tdp){
 	if (tdp->td_pretruncate <= 0) 
 		return(0);
 
-    /* A regression in XFS means that preallocate fixes the extents, but
-       performance is still bad during file extend sequences.  Truncate
-       the file to length to improve performance */
+    /* Truncate the file to length to improve performance */
 	status = ftruncate(tdp->td_file_desc, tdp->td_pretruncate * tdp->td_block_size);
 
 	// Status should be 0 if everything worked otherwise there was a problem
