@@ -5,8 +5,11 @@
 - CMake 3.12+
 - A C Compiler
 - Python 3+
+- pkg-config
 - libnuma (optional)
 - libibverbs (optional)
+- rpmbuild (optional)
+- dpkg-buildpackage (optional)
 
 ## Build
 ```bash
