@@ -38,6 +38,9 @@ if (IBVERBS)
   if (IBV_GET_DEVICE_LIST)
     option(WITH_VERBS "Build with verbs" ON)
     if (WITH_VERBS)
+      set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, libibverbs")
+      list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS "libibverbs1")
+
       set(HAVE_ENABLE_IB 1)
     endif()
   endif()
@@ -59,6 +62,9 @@ if (NUMA_FOUND)
     check_symbol_exists(numa_node_to_cpus     "numa.h" HAVE_NUMA_NODE_TO_CPUS)
     check_symbol_exists(numa_allocate_cpumask "numa.h" HAVE_NUMA_ALLOCATE_CPUMASK)
     list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${NUMA_LDFLAGS})
+
+    set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, numactl-libs")
+    list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS "libnuma1")
 
     set(HAVE_NUMA_H 1)
   endif()
@@ -125,6 +131,8 @@ if (DPKGBUILD)
     set(CPACK_DEBIAN_PACKAGE_SUMMARY "IO performace Test Tool dd with an X factor")
     set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/MigeljanImeri/xdd")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "XDD Developers")
+
+    string(REPLACE ";" ", " CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}")
   endif()
 endif()
 
