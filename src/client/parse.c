@@ -18,7 +18,7 @@
 #include "xint.h"
 #include "parse.h"
 
-#if HAVE_NUMA_H
+#if HAVE_ENABLE_NUMA
 #include <numa.h>
 #endif
 
@@ -382,7 +382,7 @@ void xdd_set_target_cpu_mask(target_data_t *tdp, char *numa_nodes)
 	int node_list_offset = 0;
 	tdp->numa_node_list[node_list_offset] = '\0';
 
-#if HAVE_NUMA_NODE_TO_CPUS && HAVE_NUMA_ALLOCATE_CPUMASK
+#if HAVE_ENABLE_NUMA
 	int numa_node_no = -1;
 	struct bitmask* numa_mask = NULL;
 	char *cmdline = strdup(numa_nodes);
@@ -410,11 +410,11 @@ void xdd_set_target_cpu_mask(target_data_t *tdp, char *numa_nodes)
 		free(cmdline);
 		numa_free_cpumask(numa_mask);
 	}
-#else /* HAVE_NUMA_NODE_TO_CPUS && HAVE_NUMA_ALLOCATE_CPUMASK */
+#else /* HAVE_ENABLE_NUMA */
 	sched_getaffinity(getpid(),
 					  sizeof(tdp->cpumask),
 					  &tdp->cpumask);
-#endif /* HAVE_NUMA_NODE_TO_CPUS && HAVE_NUMA_ALLOCATE_CPUMASK */
+#endif /* HAVE_ENABLE_NUMA */
 } /* end of xdd_set_target_cpu_mask() */
 #endif /* HAVE_CPU_SET_T */
 

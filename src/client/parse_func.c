@@ -20,7 +20,7 @@
 #include "parse.h"
 #include <ctype.h>
 
-#if HAVE_NUMA_H
+#if HAVE_ENABLE_NUMA
 #include <numa.h>
 #endif
 
@@ -1169,7 +1169,7 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		    		tdp->td_e2ep->e2e_address_table[tdp->td_e2ep->e2e_address_table_next_entry].port_count = 0;
 				}
 
-#if HAVE_CPU_SET_T && HAVE_NUMA_NODE_TO_CPUS && HAVE_NUMA_ALLOCATE_CPUMASK
+#if HAVE_CPU_SET_T && HAVE_ENABLE_NUMA
 				if (numa_node && -1 != numa_available()) {
 		    		int i;
 		    		struct bitmask* numa_mask = numa_allocate_cpumask();
@@ -1220,7 +1220,7 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 						} else {
 			    			tdp->td_e2ep->e2e_address_table[tdp->td_e2ep->e2e_address_table_next_entry].port_count = 0;
 						}
-#if HAVE_CPU_SET_T && HAVE_NUMA_NODE_TO_CPUS && HAVE_NUMA_ALLOCATE_CPUMASK
+#if HAVE_CPU_SET_T && HAVE_ENABLE_NUMA
 						if (numa_node && -1 != numa_available()) {
 			    			int i;
 			    			struct bitmask* numa_mask = numa_allocate_cpumask();

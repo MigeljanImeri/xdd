@@ -58,15 +58,10 @@ if (NUMA_FOUND)
   if (WITH_NUMA)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${NUMA_CFLAGS}")
 
-    list(APPEND CMAKE_REQUIRED_LIBRARIES ${NUMA_LDFLAGS}) # CMP0075, requires CMake 3.12
-    check_symbol_exists(numa_node_to_cpus     "numa.h" HAVE_NUMA_NODE_TO_CPUS)
-    check_symbol_exists(numa_allocate_cpumask "numa.h" HAVE_NUMA_ALLOCATE_CPUMASK)
-    list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${NUMA_LDFLAGS})
-
     set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, numactl-libs")
     list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS "libnuma1")
 
-    set(HAVE_NUMA_H 1)
+    set(HAVE_ENABLE_NUMA 1)
   endif()
 else()
   message(STATUS "libnuma not found")

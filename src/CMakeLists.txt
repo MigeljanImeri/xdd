@@ -47,7 +47,7 @@ if (IBVERBS AND IBV_GET_DEVICE_LIST AND WITH_VERBS)
   target_link_libraries(xdd-lib ibverbs)
 endif()
 
-if (NUMA_FOUND AND HAVE_NUMA_NODE_TO_CPUS AND HAVE_NUMA_ALLOCATE_CPUMASK AND WITH_NUMA)
+if (NUMA_FOUND AND WITH_NUMA)
   target_link_libraries(xdd-lib ${NUMA_LDFLAGS})
 endif()
 

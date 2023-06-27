@@ -82,9 +82,6 @@
 /* Define to 1 if you have the <utmpx.h> header file. */
 #cmakedefine01 HAVE_UTMPX_H
 
-/* Define to 1 if you have the <numa.h> header file. */
-#cmakedefine01 HAVE_NUMA_H
-
 /* Define to 1 if you have the <sched.h> header file. */
 #cmakedefine01 HAVE_SCHED_H
 
@@ -115,12 +112,6 @@
 
 /* Define to 1 if you have the `nanosleep' function. */
 #cmakedefine01 HAVE_NANOSLEEP
-
-/* Define to 1 if you have the `numa_node_to_cpus' function. */
-#cmakedefine01 HAVE_NUMA_NODE_TO_CPUS
-
-/* Define to 1 if you have the `numa_allocate_cpumask' function. */
-#cmakedefine01 HAVE_NUMA_ALLOCATE_CPUMASK
 
 /* Define to 1 if you have the `posix_memalign' function. */
 #cmakedefine01 HAVE_POSIX_MEMALIGN
@@ -173,6 +164,9 @@
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 #cmakedefine size_t unsigned int
+
+/* Define to 1 if you wish to enable numactl support */
+#cmakedefine01 HAVE_ENABLE_NUMA
 
 /* Define to 1 if you wish to enable Infiniband support */
 #cmakedefine01 HAVE_ENABLE_IB
