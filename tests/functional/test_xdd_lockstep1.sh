@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 # Acceptance test for XDD.
 #
@@ -12,7 +12,7 @@ source ./common.sh
 
 # Create the test location
 initialize_test
-test_dir=$XDDTEST_LOCAL_MOUNT/$TESTNAME 
+test_dir=$XDDTEST_LOCAL_MOUNT/$TESTNAME
 
 # A super simple lockstep
 $XDDTEST_XDD_EXE -targets 2 $test_dir/foo $test_dir/foo -op target 0 write -op target 1 read \
@@ -30,9 +30,9 @@ fi
 
 # Output test result
 if [ "1" == "$test_passes" ]; then
-  # test passed 
+  # test passed
   finalize_test 0
 else
-  # test failed  
+  # test failed
   finalize_test 1
 fi

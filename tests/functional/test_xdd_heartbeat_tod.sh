@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Description - displays time of day
 #
@@ -68,7 +68,7 @@ for ((count=1; count<$run_time; count++)); do
     fi
     if [ $rd_time == $cd_time ]; then
         match[2]=1
-        
+
     fi
     if [ $rmo_time == $cmo_time ]; then
         match[3]=1
@@ -80,16 +80,16 @@ for i in {0..3}; do
       sum=$[$sum+${match[$i]}]
 done
 
-# if all dates match then sum should equal 4 
+# if all dates match then sum should equal 4
 if [ $sum -eq 4 ]; then
       test_success=1
 fi
 
 # Verify output
 if [ $test_success -eq 1 ]; then
-  # test passed 
+  # test passed
   finalize_test 0
 #else
-  # test failed  
+  # test failed
   finalize_test 1
 fi

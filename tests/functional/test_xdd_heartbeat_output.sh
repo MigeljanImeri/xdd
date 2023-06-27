@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Description - sends all heartbeat updates to specified file
 #
@@ -33,10 +33,9 @@ fi
 
 # Verify output
 if [ $test_success -ge 1 ]; then
-  # test passed 
+  # test passed
   finalize_test 0
 else
-  # test failed  
+  # test failed
   finalize_test 1
 fi
-

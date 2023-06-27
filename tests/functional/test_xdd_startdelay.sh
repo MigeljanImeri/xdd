@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Acceptance test for XDD
 #
 # Description - waits n amount of seconds before starting each pass
-# Validate -startdelay by checking if run time is greater or equal to n seconds times the amount of passes 
+# Validate -startdelay by checking if run time is greater or equal to n seconds times the amount of passes
 #
 # Source the test configuration environment
 #
@@ -28,11 +28,11 @@ elapsed_time=$(echo "$timed_pass_output" |grep '^real' |awk '{print $2}')
 # Truncate elapsed_time
 elapsed_time=$(echo $elapsed_time| cut -d '.' -f 1)
 
-# Verify output 
+# Verify output
 if [ "$elapsed_time" -ge "$correct_time" ]; then
-  # test passed 
+  # test passed
   finalize_test 0
 else
-  # test failed  
+  # test failed
   finalize_test 1
 fi

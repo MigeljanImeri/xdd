@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Description - prints a new line after each heartbeat update
 #
@@ -27,9 +27,9 @@ match=$(echo $lines | cut -f 1 -d ' ')
 
 # verify output
 if [ $match -eq $lines ]; then
-  # test passed 
+  # test passed
   finalize_test 0
 else
-  # test failed  
+  # test failed
   finalize_test 1
 fi

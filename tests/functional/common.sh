@@ -1,12 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
-# Utility functions for acceptance testing.  
+# Utility functions for acceptance testing.
 #
 # Highlights are:
 #  - initializes test by:
 #      creating data directories
 #  - finalizes test by:
-#      printing a pretty formatted message 
+#      printing a pretty formatted message
 #      cleaning up test data if the test passed or skipped
 #  - generates correct test data files
 #  - generates correct test file names
@@ -26,14 +26,14 @@ initialize_test() {
     fi
 
     # Create directories associated with local tests
-    \mkdir -p $XDDTEST_LOCAL_MOUNT/$TESTNAME
+    mkdir -p $XDDTEST_LOCAL_MOUNT/$TESTNAME
     if [ 0 -ne $? ]; then
         echo "Unable to create $XDDTEST_LOCAL_MOUNT/$TESTNAME"
         finalize_test 2
     fi
 
     # Create the log directory
-    \mkdir -p $XDDTEST_OUTPUT_DIR
+    mkdir -p $XDDTEST_OUTPUT_DIR
 
     # Initialize the uid for data files
     common_next_file="0"
@@ -137,4 +137,3 @@ pass() {
 skip() {
     printf "%-20s\t%10s\n" $TESTNAME "SKIPPED"
 }
-

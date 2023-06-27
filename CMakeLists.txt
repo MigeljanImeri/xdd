@@ -75,8 +75,9 @@ endif()
 # build library and executables
 add_subdirectory(src)
 
-# configure tests
-configure_file(run_tests.py run_tests.py @ONLY)
+# set up tests
+enable_testing()
+add_subdirectory(tests)
 
 # optionally build docs
 find_package(Doxygen COMPONENTS dot)

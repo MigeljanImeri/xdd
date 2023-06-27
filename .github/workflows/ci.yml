@@ -28,8 +28,8 @@ jobs:
     - name: make install
       run: sudo make -C ${{github.workspace}}/build install
     - name: run tests
-      run: ${{github.workspace}}/build/run_tests.py
-
+      run: ctest --output-on-failure
+      working-directory: ${{github.workspace}}/build
   deb:
 
     runs-on: ubuntu-latest
@@ -52,4 +52,5 @@ jobs:
     - name: install deb
       run: sudo apt install -y ${{github.workspace}}/build/xdd-*.deb
     - name: run tests
-      run: ${{github.workspace}}/build/run_tests.py
+      run: ctest --output-on-failure
+      working-directory: ${{github.workspace}}/build

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 # Acceptance test for XDD.
 #
@@ -30,9 +30,9 @@ fi
 
 # Output test result
 if [ "1" == "$test_passes" ]; then
-  # test passed 
+  # test passed
   finalize_test 0
 else
-  # test failed  
+  # test failed
   finalize_test 1
 fi

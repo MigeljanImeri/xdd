@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Acceptance test for XDD
 #
@@ -39,7 +39,7 @@ max_passes=4
 
 for ((num_passes=$min_passes;num_passes<=$max_passes;num_passes++)); do
       xdd_cmd="$XDDTEST_XDD_EXE -op write -target $test_file -numreqs 10 -passes $num_passes -passdelay 1 -reopen $test_file"
-       
+
       #sys_call_open=$(2>&1 strace -cfq -e trace=open $xdd_cmd |grep open| tail -1 | cut -b 32-40)
       sys_call_open=$(2>&1 strace -cfq -e trace=openat $xdd_cmd | grep openat| cut -b 32-40)
       sys_call_close=$(2>&1 strace -cfq -e trace=close $xdd_cmd | grep close | cut -b 32-40)
@@ -51,13 +51,13 @@ done
 
 pass_count=0
 
-# Check if the first element is 1 less than the next and so on for n-1 elements 
+# Check if the first element is 1 less than the next and so on for n-1 elements
 for ((i=$min_passes;i<=$(($max_passes-1));i++)); do
-     
-      if [ $((${sys_open[$i]}+1)) -eq ${sys_open[$(($i+1))]} ]; then
+
+      if [[ $((${sys_open[$i]}+1)) -eq ${sys_open[$(($i+1))]} ]]; then
             pass_count=$(($pass_count+1))
       fi
-      if [ $((${sys_close[$i]}+1)) -eq ${sys_close[$(($i+1))]} ]; then
+      if [[ $((${sys_close[$i]}+1)) -eq ${sys_close[$(($i+1))]} ]]; then
             pass_count=$(($pass_count+1))
       fi
 done
@@ -66,10 +66,10 @@ correct_count=$(($max_passes-$min_passes))
 correct_count=$(($correct_count*2))
 
 # verify output
-if [ $pass_count -eq $correct_count ]; then
-  # test passed 
+if [[ $pass_count -eq $correct_count ]]; then
+  # test passed
   finalize_test 0
 else
-  # test failed  
+  # test failed
   finalize_test 1
 fi

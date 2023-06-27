@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
-# Description - outputs current amount of Bytes, Kilobytes, Megabytes, and Gigabytes 
+# Description - outputs current amount of Bytes, Kilobytes, Megabytes, and Gigabytes
 #
 # Verify -hb byte, kbyte, mbyte, gbyte by checking if heartbeat output bytes equals actual transfered bytes and if output bytes matches output kbytes, mbytes, and gbytes
 #
@@ -49,7 +49,7 @@ done
 
 fi
 
-echo "xdd_get_file elements : $num_ele" 
+echo "xdd_get_file elements : $num_ele"
 
 # copy data2.T0000.csv to data3 without the empty first line
 sed 1d $test_dir/data2.T0000.csv > $test_dir/data3
@@ -79,11 +79,11 @@ byte[$i]=$(echo $byte | sed 's/^0*//')
 kbyte=$(sed -n "$i"p $test_dir/data3 | cut -f 6 -d ',') # remove trailing 0s and truncate
 kbyte[$i]=$(echo ${kbyte%.*} | sed 's/^0*//')
 
-mbyte=$(sed -n "$i"p $test_dir/data3 | cut -f 8 -d ',') # remove trailing 0s and truncate 
+mbyte=$(sed -n "$i"p $test_dir/data3 | cut -f 8 -d ',') # remove trailing 0s and truncate
 mbyte[$i]=$(echo ${mbyte%.*} | sed 's/^0*//')
 
 gbyte=$(sed -n "$i"p $test_dir/data3 | cut -f 10 -d ',') # multiply gbytes by 10 and remove
-gbyte=$(echo "$gbyte*10" | bc)                           # decimal to get rid floating points  
+gbyte=$(echo "$gbyte*10" | bc)                           # decimal to get rid floating points
 gbyte[$i]=$(echo ${gbyte%.*})
 done
 
@@ -92,30 +92,29 @@ sum_errors=0
 error_bound=20
 
 outlier_count=0
-outlier_bound=$(($times_test/3))     # cannot have more than a third of the results be outliers 
+outlier_bound=$(($times_test/3))     # cannot have more than a third of the results be outliers
 
 for i in $(seq 1 $times_test); do
-error=$((${byte[$i]}-${xdd_get_size[$i]}))          
+error=$((${byte[$i]}-${xdd_get_size[$i]}))
 abs_error=$(echo ${error#-})
 rel_error=$(($error*100))
-rel_error=$(($rel_error/${xdd_get_size[$i]}))       
+rel_error=$(($rel_error/${xdd_get_size[$i]}))
 rel_error=$(echo ${rel_error#-})     # remove negative sign
 
 echo "rel_error : $rel_error from_hb: ${byte[$i]} from_xdd: ${xdd_get_size[$i]} hb-xdd: $abs_error"
 
 if [ $rel_error -ge $error_bound ]; then
     outlier_count=$(($outlier_count+1))
-fi 
+fi
 done
 
 
       echo "results count: $times_test outlier count: $outlier_count"
 
       if [ $outlier_count -le $outlier_bound ]; then
-          # test passed 
+          # test passed
           finalize_test 0
       fi
 
       # test failed
       finalize_test 1
-

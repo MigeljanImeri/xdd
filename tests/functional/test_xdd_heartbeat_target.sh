@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Description - displays the target number during each output
 #
@@ -29,9 +29,9 @@ target_num2=$(echo $target2 |cut -f 4 -d ',' | cut -c 4)
 
 # Verify output
 if [ $target_num -eq 0 ] && [ $target_num2 -eq 1 ]; then
-  # test passed 
+  # test passed
   finalize_test 0
 else
-  # test failed  
+  # test failed
   finalize_test 1
 fi

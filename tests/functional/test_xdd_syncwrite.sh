@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Description - synchronizes write ops after each pass, flushing all data to the physical media
 #
@@ -11,7 +11,7 @@ source ./common.sh
 
 #skip test on non-Linux platforms
 if [ `uname` != "Linux" ]; then
-  # test passed 
+  # test passed
   finalize_test -1
 fi
 
@@ -31,9 +31,9 @@ sync_num=$(echo $sys_call |cut -f 4 -d ' ')
 
 # Verify output
 if [ $sync_num -eq $num_passes ]; then
-  # test passed 
+  # test passed
   finalize_test 0
 else
-  # test failed  
+  # test failed
   finalize_test 1
 fi

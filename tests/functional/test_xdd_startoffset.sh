@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Acceptance test for XDD
 #
@@ -21,7 +21,7 @@ touch $test_file
 req_size=10
 start_offset=5
 
-$XDDTEST_XDD_EXE -target $test_file -op write -reqsize $req_size -numreqs 1 -startoffset $start_offset 
+$XDDTEST_XDD_EXE -target $test_file -op write -reqsize $req_size -numreqs 1 -startoffset $start_offset
 
 # Determine file requested transfer size and actual size
 transfer_size=$(($req_size*1024))
@@ -32,9 +32,9 @@ calc_actual_size=$(($actual_size-$transfer_size))
 
 # Verify results
 if [ $calc_actual_size -eq $(($transfer_size/2)) ]; then
-  # test passed 
+  # test passed
   finalize_test 0
 else
-  # test failed  
+  # test failed
   finalize_test 1
 fi

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Source the test configuration environment
 #
@@ -38,10 +38,9 @@ if (( $(echo "$percent_error < $error_bound" | bc -l) )); then
 fi
 
 if [[ $pass_count -eq 1 ]]; then
-  # test passed 
+  # test passed
   finalize_test 0
-else 
-  # test failed  
+else
+  # test failed
   finalize_test 1
 fi
-
