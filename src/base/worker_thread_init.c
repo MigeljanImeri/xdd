@@ -29,14 +29,14 @@ xdd_worker_thread_init(worker_data_t *wdp) {
     char			tmpname[XDD_BARRIER_MAX_NAME_LENGTH];	// Used to create unique names for the barriers
 	unsigned char	*bufp;		// Generic Buffer pointer
 
-#if HAVE_CPU_SET_T && HAVE_PTHREAD_ATTR_SETAFFINITY_NP
+#if DEBUG && HAVE_CPU_SET_T && HAVE_PTHREAD_ATTR_SETAFFINITY_NP
     // BWS Print the cpuset
     int i;
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
     printf("Thread %ld bound to NUMA node", (long int) pthread_self());
-    for (i = 0; i< 48; i++)
+    for (i = 0; i < CPU_SETSIZE; i++)
         if (CPU_ISSET(i, &cpuset))
             printf(" %d", i);
     printf("\n");

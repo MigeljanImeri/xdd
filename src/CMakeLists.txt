@@ -8,6 +8,10 @@ include_directories(
   "${CMAKE_CURRENT_BINARY_DIR}/compat" # oonfig.h
 )
 
+# Modified answer by ixSci
+# https://stackoverflow.com/a/72330784
+add_compile_definitions(DEBUG=$<CONFIG:Debug>)
+
 # copied from configure.ac
 # removed __INTEL__ and _FILE_OFFSET_BITS=64
 add_compile_definitions(LINUX)
