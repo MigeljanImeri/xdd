@@ -351,7 +351,7 @@ xdd_func_t  xdd_func[] = {
             {"    Will set not lock process into memory\n",
             0,0,0,0},
 			0},
-#if HAVE_CPU_SET_T
+#if HAVE_ENABLE_NUMA
     {"numactl", "numa",
             xddfunc_numactl,
             1,

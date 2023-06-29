@@ -24,44 +24,44 @@ include(CheckIncludeFiles)
 include(CheckSymbolExists)
 
 # find libibverbs
-find_library(IBVERBS ibverbs)
-if (IBVERBS)
-  message(STATUS "libibverbs: ${IBVERBS}")
-  check_include_files(infiniband/verbs.h HAVE_INFINIBAND_VERBS_H)
-
-  list(APPEND CMAKE_REQUIRED_LIBRARIES -libverbs) # CMP0075, requires CMake 3.12
-  check_symbol_exists(ibv_get_device_list "infiniband/verbs.h" IBV_GET_DEVICE_LIST)
-  list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES -libverbs)
-  if (IBV_GET_DEVICE_LIST)
-    option(WITH_VERBS "Build with verbs" ON)
-    if (WITH_VERBS)
+option(WITH_VERBS "Build with verbs" ON)
+if (WITH_VERBS)
+  find_library(IBVERBS ibverbs)
+  if (IBVERBS)
+    message(STATUS "libibverbs: ${IBVERBS}")
+    check_include_files(infiniband/verbs.h HAVE_INFINIBAND_VERBS_H)
+    list(APPEND CMAKE_REQUIRED_LIBRARIES -libverbs) # CMP0075, requires CMake 3.12
+    check_symbol_exists(ibv_get_device_list "infiniband/verbs.h" IBV_GET_DEVICE_LIST)
+    list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES -libverbs)
+    if (IBV_GET_DEVICE_LIST)
       set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, libibverbs")
       list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS "libibverbs1")
-
       set(HAVE_ENABLE_IB 1)
+    else()
+      message(STATUS "libibverbs found but missing symbol ibv_get_device_list")
     endif()
+  else()
+    message(STATUS "libibverbs not found.")
   endif()
-else()
-  message(STATUS "libibverbs not found")
 endif()
 
 # libnuma is optional
-pkg_search_module(NUMA numa)
-if (NUMA_FOUND)
-  message(STATUS "libnuma CFLAGS:  ${NUMA_CFLAGS}")
-  message(STATUS "libnuma LDFLAGS: ${NUMA_LDFLAGS}")
+option(WITH_NUMA "Build with libnuma" ON)
+if (WITH_NUMA)
+  pkg_search_module(NUMA numa)
+  if (NUMA_FOUND)
+    message(STATUS "libnuma CFLAGS:  ${NUMA_CFLAGS}")
+    message(STATUS "libnuma LDFLAGS: ${NUMA_LDFLAGS}")
 
-  option(WITH_NUMA "Build with libnuma" ON)
-  if (WITH_NUMA)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${NUMA_CFLAGS}")
 
     set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, numactl-libs")
     list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS "libnuma1")
 
     set(HAVE_ENABLE_NUMA 1)
+  else()
+    message(STATUS "libnuma not found")
   endif()
-else()
-  message(STATUS "libnuma not found")
 endif()
 
 # optionally build for flamegraph analysis

@@ -2337,7 +2337,7 @@ xddfunc_noproclock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 		xgp->global_options |= GO_NOPROCLOCK;
     return(1);
 }
-#if HAVE_CPU_SET_T
+#if HAVE_ENABLE_NUMA
 /*----------------------------------------------------------------------------*/
 // Specify the NUMA domain to pin worker threads of a particular target
 // Arguments: -numactl [target #] #[,#]*
@@ -2374,7 +2374,7 @@ xddfunc_numactl(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		return(2);
 	}
 }
-#endif /* HAVE_CPU_SET_T */
+#endif /* HAVE_ENABLE_NUMA */
 /*----------------------------------------------------------------------------*/
 // Specify the number of requests to run
 // Arguments: -numreqs [target #] #
