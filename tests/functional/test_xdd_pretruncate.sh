@@ -9,8 +9,8 @@
 #
 # Source the test configuration environment
 #
-source ./test_config
-source ./common.sh
+source ../test_config
+source ../common.sh
 
 # Pre-test create test directory and file
 initialize_test

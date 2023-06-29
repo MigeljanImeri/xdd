@@ -8,8 +8,8 @@
 #
 # Source the test configuration environment
 #
-source ./test_config
-source ./common.sh
+source ../test_config
+source ../common.sh
 
 # Skip test on non-Linux platforms
 if [ `uname` != "Linux" ]; then

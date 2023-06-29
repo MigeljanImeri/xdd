@@ -5,8 +5,8 @@
 # Validate -hb tod by comparing it to current time
 #
 # Source test configuration environment
-source ./test_config
-source ./common.sh
+source ../test_config
+source ../common.sh
 
 # pre-test set-up
 initialize_test

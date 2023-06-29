@@ -808,9 +808,9 @@ xddfunc_debug(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			   (strcmp(argv[1], "TL") == 0) ||
 			   (strcmp(argv[1], "tl") == 0)) {
 			xgp->global_options |= GO_DEBUG_TIME_LIMIT;
-	} else if ((strcmp(argv[1], "USER1") == 0) ||
-			   (strcmp(argv[1], "user1") == 0)) {
-			xgp->global_options |= GO_DEBUG_USER1;
+	} else if ((strcmp(argv[1], "INIT") == 0) ||
+			   (strcmp(argv[1], "init") == 0)) {
+			xgp->global_options |= GO_DEBUG_INIT;
 	} else if ((strcmp(argv[1], "ALL") == 0) ||
 			   (strcmp(argv[1], "all") == 0) ||
 			   (strcmp(argv[1], "a") == 0)) {

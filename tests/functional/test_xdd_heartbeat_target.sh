@@ -5,8 +5,8 @@
 # Verify -tgt by checking if target number displayed matches target number tested
 #
 # Source test environment
-source ./test_config
-source ./common.sh
+source ../test_config
+source ../common.sh
 
 # pre-test set-up
 initialize_test

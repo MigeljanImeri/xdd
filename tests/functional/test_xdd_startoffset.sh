@@ -7,8 +7,8 @@
 # Validate -startoffset by comparing the size of a file starting from block 0 to its size starting from the nth block
 #
 # Source the test configuration environment
-source ./test_config
-source ./common.sh
+source ../test_config
+source ../common.sh
 
 # Pre-test set-up
 initialize_test

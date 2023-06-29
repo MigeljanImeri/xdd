@@ -5,8 +5,8 @@
 # Verify -hb output by checking if specified file exists
 #
 # Source test environment
-source ./test_config
-source ./common.sh
+source ../test_config
+source ../common.sh
 
 # Pre-test set-up
 initialize_test

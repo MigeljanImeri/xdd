@@ -30,16 +30,17 @@ xdd_worker_thread_init(worker_data_t *wdp) {
 	unsigned char	*bufp;		// Generic Buffer pointer
 
 #if HAVE_CPU_SET_T && HAVE_PTHREAD_ATTR_SETAFFINITY_NP
-    // BWS Print the cpuset
-    int i;
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
-    printf("Thread %ld bound to NUMA node", (long int) pthread_self());
-    for (i = 0; i< 48; i++)
-        if (CPU_ISSET(i, &cpuset))
-            printf(" %d", i);
-    printf("\n");
+	if (xgp->global_options & GO_DEBUG_INIT) {
+		int i;
+		cpu_set_t cpuset;
+		CPU_ZERO(&cpuset);
+		pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+		fprintf(stderr, "Thread %ld bound to NUMA node", (long int) pthread_self());
+		for (i = 0; i < CPU_SETSIZE; i++)
+			if (CPU_ISSET(i, &cpuset))
+				fprintf(stderr, " %d", i);
+		fprintf(stderr, "\n");
+	}
 #endif
 
     // Get the Target Data Struct address as well
