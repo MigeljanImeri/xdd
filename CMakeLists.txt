@@ -15,6 +15,7 @@ set(PACKAGE_BUGREPORT "bug@xdd.org")
 set(PACKAGE_TARNAME "${CMAKE_PROJECT_NAME}")
 
 # Threads are required
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 # for finding packages with pkg-config
@@ -57,7 +58,6 @@ if (WITH_NUMA)
 
     set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, numactl-libs")
     list(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS "libnuma1")
-
     set(HAVE_ENABLE_NUMA 1)
   else()
     message(STATUS "libnuma not found")

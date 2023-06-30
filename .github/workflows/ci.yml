@@ -11,44 +11,37 @@ jobs:
     name: build
 
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        img: ["ubuntu:20.04", "ubuntu:22.04", "centos:8" ]
+      fail-fast: true
+    container:
+      image: ${{ matrix.img }}
 
     steps:
     - uses: actions/checkout@v3
-    - name: apt update
-      run: sudo apt-get update
-    - uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: xfsprogs gnuplot net-tools numactl libnuma-dev xfslibs-dev bc time strace
-        version: 1.0
-    - name: configure
-      run: cmake -B ${{github.workspace}}/build
-    - name: make
-      run: make -C ${{github.workspace}}/build
-    - name: make install
-      run: sudo make -C ${{github.workspace}}/build install
-    - name: run tests
-      run: ctest --output-on-failure
-      working-directory: ${{github.workspace}}/build
-  deb:
 
-    runs-on: ubuntu-latest
+    - name: Ubuntu Prerequisites
+      if: startsWith(matrix.img, 'ubuntu:')
+      run: contrib/CI/ubuntu.sh
 
-    steps:
-    - uses: actions/checkout@v3
-    - name: apt update
-      run: sudo apt-get update
-    - uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: xfsprogs gnuplot net-tools numactl libnuma-dev xfslibs-dev bc time strace
-        version: 1.0
-    - name: configure
-      run: cmake -B ${{github.workspace}}/build
-    - name: make
+    - name: CentOS 8 Prerequisites
+      if: matrix.img == 'centos:8'
+      run: contrib/CI/centos8.sh
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build 
+
+    - name: Make
       run: make -C ${{github.workspace}}/build
-    - name: build deb
+
+    - name: Make Package
       run: make -C ${{github.workspace}}/build package
-    - name: install deb
-      run: sudo apt install -y ${{github.workspace}}/build/xdd-*.deb
-    - name: run tests
-      run: ctest --output-on-failure
-      working-directory: ${{github.workspace}}/build
+
+    - name: Install
+      run: make -C ${{github.workspace}}/build install
+
+    - name: Run Tests
+      run:  | 
+            cd ${{github.workspace}}/build 
+            ctest --output-on-failure
