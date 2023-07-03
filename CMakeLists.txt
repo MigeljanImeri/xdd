@@ -14,9 +14,6 @@ set(PACKAGE_URL "")
 set(PACKAGE_BUGREPORT "bug@xdd.org")
 set(PACKAGE_TARNAME "${CMAKE_PROJECT_NAME}")
 
-# Python is required
-find_program(PYTHON REQUIRED NAMES python3 python)
-
 # Threads are required
 find_package(Threads REQUIRED)
 
