@@ -21,7 +21,7 @@ set(FUNCTIONAL
 foreach(TEST ${FUNCTIONAL})
   configure_file("${TEST}" "${TEST}" COPYONLY)
   add_test(NAME "${TEST}"
-    COMMAND sh -c "${CMAKE_CURRENT_BINARY_DIR}/${TEST} 2> ${TESTDIR}/logs/${TEST}.log"
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TEST}
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
   set_tests_properties("${TEST}" PROPERTIES LABELS "functional")
   set_tests_properties("${TEST}" PROPERTIES SKIP_RETURN_CODE 255)

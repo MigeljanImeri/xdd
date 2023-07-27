@@ -16,16 +16,16 @@ initialize_test
 
 echo "Foobar and I am here motherfucker"
 
-xdd_cmd="${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose -debug INIT"
-${xdd_cmd} 2>&1 | grep "bound to NUMA node"
+${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose -debug INIT \
+  2>&1 | grep "bound to NUMA node"
 
 if [[ $? -ne 0 ]]; then
   # test failed
   finalize_test 1
 fi
 
-xdd_cmd="${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose"
-${xdd_cmd} 2>&1 | grep "bound to NUMA node"
+${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose \
+  2>&1 | grep "bound to NUMA node"
 
 if [[ $? -ne 1 ]]; then
   # test failed
