@@ -21,7 +21,6 @@ ${xdd_cmd} 2>&1 | grep "bound to NUMA node"
 
 if [[ $? -ne 0 ]]; then
   # test failed
-  echo "We are here with $? which is not equal to zero..."
   finalize_test 1
 fi
 
