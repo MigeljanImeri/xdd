@@ -25,7 +25,7 @@ num_passes=5
 pass_delay=2
 correct_time=$((($num_passes-1)*$pass_delay))
 xdd_cmd="$XDDTEST_XDD_EXE -target $test_file -op write -reqsize 1024 -numreqs 10 -passes $num_passes -passdelay $pass_delay"
-timed_pass_output="$(2>&1 time -p $xdd_cmd)"
+timed_pass_output="$(2>&1 ${TIME_CMD} -p $xdd_cmd)"
 elapsed_time=$(echo "$timed_pass_output" |grep '^real' |awk '{print $2}')
 
 # truncated elapsed_time

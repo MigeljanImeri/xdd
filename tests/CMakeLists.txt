@@ -8,6 +8,15 @@ else()
   set(XDD_EXEC "${CMAKE_BINARY_DIR}/bin/xdd")
 endif()
 
+# certain tests rely on the time command being installed
+message(CHECK_START "Looking for /usr/bin/time")
+find_program(Time_EXECUTABLE NAMES time)
+if (NOT Time_EXECUTABLE)
+  message(CHECK_FAIL "not found: ctest will skip tests test_xdd_{passdelay/startdelay}")
+else()
+  message(CHECK_PASS "found")
+endif() 
+
 # configurable output directory
 set(TESTDIR "${CMAKE_BINARY_DIR}/test-dir" CACHE PATH "Where to place test files")
 add_custom_target(mk-test-dir ALL
@@ -28,7 +37,8 @@ file(GENERATE
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/test_config"
   CONTENT "XDDTEST_XDD_EXE=${XDD_EXEC}
 XDDTEST_LOCAL_MOUNT=${TESTDIR}/tests
-XDDTEST_OUTPUT_DIR=${TESTDIR}/logs"
+XDDTEST_OUTPUT_DIR=${TESTDIR}/logs
+TIME_CMD=${Time_EXECUTABLE}"
 )
 
 add_subdirectory(functional)

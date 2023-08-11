@@ -6,6 +6,8 @@ if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
   message(FATAL_ERROR "Unsupported Build Platform ${CMAKE_SYSTEM_NAME}")
 endif()
 
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 # package properties
 set(PACKAGE_NAME "${CMAKE_PROJECT_NAME}")
 set(PACKAGE_VERSION "${CMAKE_PROJECT_VERSION}")

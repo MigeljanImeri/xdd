@@ -1,7 +1,25 @@
-To run the acceptance tests for XDD, you must first create a test_config based
-on the contents of test_config.example. 
+The XDD's testing infrastructure is controlled by CMake's CTest.
 
-Acceptance tests belong in the "acceptance" directory.  Unit tests belong in the
-"unit" directory.  Other tests are stored in the "other" directory.
+The general rule of thumb when creating a test is to do the following:
+1. Create a shell script that will run the tests and place it in a directory (EX: functional).
+2. At the top of the script make sure to add:
+   source ../test_config
+   source ../common.sh
+   The test_config that is given above set certain environment variables (XDDTEST_XDD_EXE,
+   XDDTEST_LOCAL_MOUNT, XDDTEST_OUTPUT_DIR, etc) that can be used in the test shell script.
+   More enviroment variables can be added by updating the CMakeLists.txt file in this directory
+   under the "# generate config file" section if desired. The common.sh (that is in this
+   directory) is used to hold common functions that can be called from any shell test script.
+3. All test scripts should begin with calling initialize_test and end with calling finalize_test.
+   If the test case was sucessful, 0 should be passed to finalize_test, if it was unsuccessful
+   then 1 should be passed, and finally if the test should be skipped -1 should be passed.
+3. After creating the shell script in the directory, the CMakelists.txt in that directory
+   must be updated to contain the name of the test script. See "set(FUNCTIONAL)" as an example
+   in the fuctional/CMakeLists.txt.
+4. After building XDD, ctest can be ran in the build directory to run all tests.
 
-Test output is stored in the output directory.
+The directories are used to identify specific categories of tests. So make sure to place
+the test shell in the directory category that makes the most sense. If a directory for a
+specific category does not exist, then just create one. However make sure to update the
+CMakeLists.txt in this directory to take the new directory into account with
+add_subdirectory().

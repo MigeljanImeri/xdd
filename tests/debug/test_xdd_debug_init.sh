@@ -14,8 +14,6 @@ source ../common.sh
 
 initialize_test
 
-echo "Foobar and I am here motherfucker"
-
 ${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose -debug INIT \
   2>&1 | grep "bound to NUMA node"
 

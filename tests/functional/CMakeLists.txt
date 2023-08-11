@@ -8,15 +8,19 @@ set(FUNCTIONAL
     test_xdd_heartbeat_tod.sh
     test_xdd_lockstep1.sh
     test_xdd_lockstep2.sh
-    test_xdd_passdelay.sh
     test_xdd_pretruncate.sh
     test_xdd_reopen.sh
     test_xdd_runtime.sh
-    test_xdd_startdelay.sh
     test_xdd_startoffset.sh
     test_xdd_syncwrite.sh
     test_xdd_timelimit.sh
     )
+
+if (Time_EXECUTABLE)
+  list(APPEND FUNCTIONAL
+    test_xdd_passdelay.sh
+    test_xdd_startdelay.sh)
+endif()
 
 foreach(TEST ${FUNCTIONAL})
   configure_file("${TEST}" "${TEST}" COPYONLY)

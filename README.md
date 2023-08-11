@@ -5,6 +5,7 @@
 - CMake 3.12+
 - A C Compiler
 - pkg-config
+- time -> /usr/bin/time not built-in time command (optional)
 - libnuma (optional)
 - libibverbs (optional)
 - rpmbuild (optional)
