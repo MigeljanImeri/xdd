@@ -31,5 +31,5 @@ if [ $match -eq $lines ]; then
   finalize_test 0
 else
   # test failed
-  finalize_test 1
+  finalize_test 1 "$match != $lines so their is an issue -heartbeat (-hb) lf"
 fi

@@ -19,7 +19,7 @@ ${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbo
 
 if [[ $? -ne 0 ]]; then
   # test failed
-  finalize_test 1
+  finalize_test 1 "XDD output is missing NUMA node pinning info"
 fi
 
 ${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose \
@@ -27,7 +27,7 @@ ${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbo
 
 if [[ $? -ne 1 ]]; then
   # test failed
-  finalize_test 1
+  finalize_test 1 "XDD output should not have NUMA node pinning info because -debug INIT was not used"
 fi
 
 # test passed

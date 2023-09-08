@@ -91,5 +91,5 @@ if [ $test_success -eq 1 ]; then
   finalize_test 0
 #else
   # test failed
-  finalize_test 1
+  finalize_test 1 "sum = $sum (expected 4) so there is an issue with -heartbeat (-hb) tod"
 fi

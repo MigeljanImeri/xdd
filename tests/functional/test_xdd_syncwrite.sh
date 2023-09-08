@@ -35,5 +35,5 @@ if [ $sync_num -eq $num_passes ]; then
   finalize_test 0
 else
   # test failed
-  finalize_test 1
+  finalize_test 1 "fdatasync calls $sync_num != $num_passes when using -passes $num_passes -syncwrite"
 fi

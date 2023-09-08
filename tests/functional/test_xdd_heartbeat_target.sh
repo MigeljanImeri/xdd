@@ -33,5 +33,5 @@ if [ $target_num -eq 0 ] && [ $target_num2 -eq 1 ]; then
   finalize_test 0
 else
   # test failed
-  finalize_test 1
+  finalize_test 1 "First Target # = $target_num (0 expected) and Second Target # = $target_num2 (1 expected) so there is an issue with -heartbeat (-hb) tgt"
 fi

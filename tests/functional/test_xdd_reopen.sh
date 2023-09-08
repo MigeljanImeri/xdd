@@ -11,12 +11,6 @@
 source ../test_config
 source ../common.sh
 
-# Skip test on non-Linux platforms
-if [ `uname` != "Linux" ]; then
-  # test skipped
-  finalize_test -1
-fi
-
 # pre-test set-up
 initialize_test
 test_dir=$XDDTEST_LOCAL_MOUNT/$TESTNAME
@@ -71,5 +65,5 @@ if [[ $pass_count -eq $correct_count ]]; then
   finalize_test 0
 else
   # test failed
-  finalize_test 1
+  finalize_test 1 "$pass_count != $correct_count so the number of open/close calls is incorrect when using flag -reopen"
 fi

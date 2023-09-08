@@ -22,10 +22,11 @@ $XDDTEST_XDD_EXE -targets 2 $test_dir/foo $test_dir/foo -op target 0 write -op t
 test_passes=0
 correct_size=$((1024*1024*10))
 file_size=$(stat -c %s $test_dir/foo)
+error_message=""
 if [ "$correct_size" == "$file_size" ]; then
     test_passes=1
 else
-    echo "Incorrect file size.  Size is $file_size but should be $correct_size."
+    error_message="Incorrect file size.  Size is $file_size but should be $correct_size."
 fi
 
 # Output test result
@@ -34,5 +35,5 @@ if [ "1" == "$test_passes" ]; then
   finalize_test 0
 else
   # test failed
-  finalize_test 1
+  finalize_test 1 "$error_message"
 fi

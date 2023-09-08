@@ -34,6 +34,5 @@ if [ "$file_size" -eq "$pretruncate_size" ]; then
   finalize_test 0
 else
   # test failed
-  echo "File size is $file_size, but pretruncate size was $pretruncate_size"
-  finalize_test 1
+  finalize_test 1 "File size is $file_size, but pretruncate size was $pretruncate_size"
 fi

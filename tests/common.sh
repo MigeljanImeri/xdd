@@ -20,8 +20,8 @@ common_next_file=""
 #
 initialize_test() {
     # Ensure that the test config has been sourced
-    if [ -z "$XDDTEST_OUTPUT_DIR" ]; then
-        echo "No properly sourced test_config during initialization"
+    if [ -z "$XDDTEST_LOG_DIR" ]; then
+        echo "No properly sourced test_config during initialization. Missing log file path."
         finalize_test 2
     fi
 
@@ -33,7 +33,7 @@ initialize_test() {
     fi
 
     # Create the log directory
-    mkdir -p $XDDTEST_OUTPUT_DIR
+    mkdir -p $XDDTEST_LOG_DIR
 
     # Initialize the uid for data files
     common_next_file="0"
@@ -47,20 +47,29 @@ initialize_test() {
 #
 finalize_test() {
   local status="$1"
+  shift 1
+  local message=$@
 
   local rc=1
   if [ $status -eq 0 ]; then
       pass
       rc=0
   elif [ $status -eq -1 ]; then
-      skip
-      rc=0
+      skip $message
+      rc=255
   else
-      fail
+      fail $message
   fi
 
   cleanup_test_data
   exit $rc
+}
+
+#
+# Get logfile for this test to store additional test output in if desired
+#
+get_log_file() {
+    echo "$XDDTEST_LOG_DIR/$TESTNAME.log"
 }
 
 #
@@ -121,7 +130,8 @@ cleanup_test_data() {
 # Indicate a test has failed
 #
 fail() {
-    printf "%-20s\t%10s\n" $TESTNAME "FAIL"
+    local message=$@
+    printf "%-20s\t%10s: %s\n" $TESTNAME "FAIL" "$message"
 }
 
 #
@@ -135,5 +145,6 @@ pass() {
 # Indicate a test was skipped
 #
 skip() {
-    printf "%-20s\t%10s\n" $TESTNAME "SKIPPED"
+    local message=$@
+    printf "%-20s\t%10s: %s\n" $TESTNAME "SKIPPED" "$message"
 }

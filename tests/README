@@ -13,10 +13,13 @@ The general rule of thumb when creating a test is to do the following:
 3. All test scripts should begin with calling initialize_test and end with calling finalize_test.
    If the test case was sucessful, 0 should be passed to finalize_test, if it was unsuccessful
    then 1 should be passed, and finally if the test should be skipped -1 should be passed.
-3. After creating the shell script in the directory, the CMakelists.txt in that directory
+4. If the test script should output intermediate information, the function get_log_file can be
+   called to get a log file. Any information that tests wants to store can be written to this
+   log file for later analysis after the test has finished running.
+5. After creating the shell script in the directory, the CMakelists.txt in that directory
    must be updated to contain the name of the test script. See "set(FUNCTIONAL)" as an example
    in the fuctional/CMakeLists.txt.
-4. After building XDD, ctest can be ran in the build directory to run all tests.
+6. After building XDD, ctest can be ran in the build directory to run all tests.
 
 The directories are used to identify specific categories of tests. So make sure to place
 the test shell in the directory category that makes the most sense. If a directory for a

@@ -34,5 +34,5 @@ if [ "$elapsed_time" -ge "$correct_time" ]; then
   finalize_test 0
 else
   # test failed
-  finalize_test 1
+  finalize_test 1 "$elapsed_time < $correct_time using -startdelay $start_delay -passes $num_passes"
 fi

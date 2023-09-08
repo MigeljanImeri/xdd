@@ -37,5 +37,5 @@ if [ $test_success -ge 1 ]; then
   finalize_test 0
 else
   # test failed
-  finalize_test 1
+  finalize_test 1 "$f_file != $file_name so there is an issue with -heartbeat (-hb) output as the file $file_name does not exist"
 fi

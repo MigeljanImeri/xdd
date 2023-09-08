@@ -22,9 +22,7 @@ delay_time=3
 passes=3
 theoretical_seconds=$(($delay_time * $passes))
 
-
 $XDDTEST_XDD_EXE -target $test_file -op write -passes $passes -reqsize 1 -numreqs 1 -startdelay $delay_time -hb elapsed -hb output $test_dir/data2 -hb lf
-
 
 actual_seconds=$(cat $data_loc | wc -l)
 error="$(($actual_seconds-$theoretical_seconds))"
@@ -42,5 +40,5 @@ if [[ $pass_count -eq 1 ]]; then
   finalize_test 0
 else
   # test failed
-  finalize_test 1
+  finalize_test 1 "$percent_error >= $error_bound which means there exists an issue with -heartbeat (-hb) elapsed output"
 fi
