@@ -14,21 +14,9 @@ source ../common.sh
 
 initialize_test
 
-${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose -debug INIT \
-  2>&1 | grep "bound to NUMA node"
+("${XDDTEST_XDD_EXE}" -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose -debug INIT 2>&1 | grep "bound to NUMA node") || finalize_test 1 "XDD output is missing NUMA node pinning info"
 
-if [[ $? -ne 0 ]]; then
-  # test failed
-  finalize_test 1 "XDD output is missing NUMA node pinning info"
-fi
-
-${XDDTEST_XDD_EXE} -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose \
-  2>&1 | grep "bound to NUMA node"
-
-if [[ $? -ne 1 ]]; then
-  # test failed
-  finalize_test 1 "XDD output should not have NUMA node pinning info because -debug INIT was not used"
-fi
+("${XDDTEST_XDD_EXE}" -op write -reqsize 128 -numreqs 1 -targets 1 /dev/null -verbose 2>&1 | grep "bound to NUMA node") || finalize_test 1 "XDD output should not have NUMA node pinning info because -debug INIT was not used"
 
 # test passed
 finalize_test 0

@@ -26,7 +26,7 @@ jobs:
       run: contrib/CI/centos8.sh
 
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build 
+      run: cmake -B ${{github.workspace}}/build
 
     - name: Make
       run: make -C ${{github.workspace}}/build
@@ -38,6 +38,18 @@ jobs:
       run: make -C ${{github.workspace}}/build install
 
     - name: Run Tests
-      run:  | 
-            cd ${{github.workspace}}/build 
+      run:  |
+            cd ${{github.workspace}}/build
             ctest --output-on-failure
+
+  shellcheck:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: apt update
+      run: sudo apt-get update
+    - name: Install ShellCheck
+      run: sudo apt -y install shellcheck
+    - name: Run ShellCheck
+      run: shellcheck -s bash -e SC1091 $(find -name "*.sh" | sort)

@@ -13,12 +13,12 @@ source ../common.sh
 
 # pre-test set-up
 initialize_test
-test_dir=$XDDTEST_LOCAL_MOUNT/$TESTNAME
-mkdir -p $test_dir
+test_dir="${XDDTEST_LOCAL_MOUNT}/${TESTNAME}"
+mkdir -p "${test_dir}"
 
 # make test file
-test_file=$test_dir/data1
-touch $test_file
+test_file="${test_dir}/data1"
+touch "${test_file}"
 
 # create array to store number of opens and closes
 declare -a sys_open
@@ -31,36 +31,38 @@ declare -a sys_close
 min_passes=2
 max_passes=4
 
-for ((num_passes=$min_passes;num_passes<=$max_passes;num_passes++)); do
-      xdd_cmd="$XDDTEST_XDD_EXE -op write -target $test_file -numreqs 10 -passes $num_passes -passdelay 1 -reopen $test_file"
+for ((num_passes=min_passes; num_passes<=max_passes; num_passes++)); do
+      xdd_cmd="${XDDTEST_XDD_EXE} -op write -target ${test_file} -numreqs 10 -passes ${num_passes} -passdelay 1 -reopen ${test_file}"
 
       #sys_call_open=$(2>&1 strace -cfq -e trace=open $xdd_cmd |grep open| tail -1 | cut -b 32-40)
-      sys_call_open=$(2>&1 strace -cfq -e trace=openat $xdd_cmd | grep openat| cut -b 32-40)
-      sys_call_close=$(2>&1 strace -cfq -e trace=close $xdd_cmd | grep close | cut -b 32-40)
-      #sys_call_close=$(2>&1 strace -cfq -e trace=close $xdd_cmd |grep close |cut -b 32-40)
+      # shellcheck disable=SC2086
+      sys_call_open=$(2>&1 strace -cfq -e trace=openat ${xdd_cmd} | grep openat| cut -b 32-40)
+      # shellcheck disable=SC2086
+      sys_call_close=$(2>&1 strace -cfq -e trace=close ${xdd_cmd} | grep close | cut -b 32-40)
+      #sys_call_close=$(2>&1 strace -cfq -e trace=close ${xdd_cmd} |grep close |cut -b 32-40)
 
-      sys_open[$num_passes]=$sys_call_open
-      sys_close[$num_passes]=$sys_call_close
+      sys_open["${num_passes}"]="${sys_call_open}"
+      sys_close["${num_passes}"]="${sys_call_close}"
 done
 
 pass_count=0
 
 # Check if the first element is 1 less than the next and so on for n-1 elements
-for ((i=$min_passes;i<=$(($max_passes-1));i++)); do
+for ((i=min_passes; i<max_passes; i++)); do
 
-      if [[ $((${sys_open[$i]}+1)) -eq ${sys_open[$(($i+1))]} ]]; then
-            pass_count=$(($pass_count+1))
+      if [[ $((${sys_open[${i}]}+1)) -eq ${sys_open[$((i+1))]} ]]; then
+            pass_count="$((pass_count+1))"
       fi
-      if [[ $((${sys_close[$i]}+1)) -eq ${sys_close[$(($i+1))]} ]]; then
-            pass_count=$(($pass_count+1))
+      if [[ $((${sys_close[${i}]}+1)) -eq ${sys_close[$((i+1))]} ]]; then
+            pass_count="$((pass_count+1))"
       fi
 done
 
-correct_count=$(($max_passes-$min_passes))
-correct_count=$(($correct_count*2))
+correct_count="$((max_passes-min_passes))"
+correct_count="$((correct_count*2))"
 
 # verify output
-if [[ $pass_count -eq $correct_count ]]; then
+if [[ "${pass_count}" -eq "${correct_count}" ]]; then
   # test passed
   finalize_test 0
 else
