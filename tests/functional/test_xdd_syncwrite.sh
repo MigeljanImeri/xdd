@@ -28,7 +28,7 @@ num_passes=10
 xdd_cmd="${XDDTEST_XDD_EXE} -target ${test_file} -op write -numreqs 10 -passes $num_passes -syncwrite"
 # shellcheck disable=SC2086
 sys_call=$(2>&1 strace -cfq -e trace=fdatasync ${xdd_cmd} | grep "fdatasync")
-sync_num=$(echo "${sys_call}" | cut -f 4 -d ' ')
+sync_num=$(echo "${sys_call}" | awk '{ print $4 }')
 
 # Verify output
 if [[ "${sync_num}" -eq "${num_passes}" ]]; then
@@ -36,5 +36,5 @@ if [[ "${sync_num}" -eq "${num_passes}" ]]; then
   finalize_test 0
 else
   # test failed
-  finalize_test 1 "fdatasync calls $sync_num != $num_passes when using -passes $num_passes -syncwrite"
+  finalize_test 1 "fdatasync calls ${sync_num} != ${num_passes} when using -passes ${num_passes} -syncwrite"
 fi

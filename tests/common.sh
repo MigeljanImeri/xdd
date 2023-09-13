@@ -11,9 +11,6 @@
 #  - generates correct test data files
 #  - generates correct test file names
 #
-#
-# curly braces with global variables
-# break in this file for some reason
 
 TESTNAME=$(basename "$0" | cut -f 1 -d .)
 common_next_file=""
@@ -23,19 +20,19 @@ common_next_file=""
 #
 initialize_test() {
     # Ensure that the test config has been sourced
-    if [[ -z "$XDDTEST_LOG_DIR" ]]; then
+    if [[ -z "${XDDTEST_LOG_DIR}" ]]; then
         echo "No properly sourced test_config during initialization. Missing log file path."
         finalize_test 2
     fi
 
     # Create directories associated with local tests
-    if ! mkdir -p "$XDDTEST_LOCAL_MOUNT/$TESTNAME" ; then
-        echo "Unable to create $XDDTEST_LOCAL_MOUNT/$TESTNAME"
+    if ! mkdir -p "${XDDTEST_LOCAL_MOUNT}/${TESTNAME}" ; then
+        echo "Unable to create ${XDDTEST_LOCAL_MOUNT}/${TESTNAME}"
         finalize_test 2
     fi
 
     # Create the log directory
-    mkdir -p "$XDDTEST_LOG_DIR"
+    mkdir -p "${XDDTEST_LOG_DIR}"
 
     # Initialize the uid for data files
     common_next_file="0"
@@ -70,7 +67,7 @@ finalize_test() {
 # Get logfile for this test to store additional test output in if desired
 #
 get_log_file() {
-    echo "$XDDTEST_LOG_DIR/$TESTNAME.log"
+    echo "${XDDTEST_LOG_DIR}/${TESTNAME}.log"
 }
 
 #
@@ -78,7 +75,7 @@ get_log_file() {
 #
 generate_local_filename() {
     local varname="$1"
-    local name="$XDDTEST_LOCAL_MOUNT/$TESTNAME/file${common_next_file}.tdt"
+    local name="${XDDTEST_LOCAL_MOUNT}/${TESTNAME}/file${common_next_file}.tdt"
     eval "${varname}=${name}"
     common_next_file="$((common_next_file + 1))"
     return 0
@@ -126,7 +123,7 @@ generate_local_file() {
 cleanup_test_data() {
     # Remove files associated with local tests
     # shellcheck disable=SC2115
-    rm -r "$XDDTEST_LOCAL_MOUNT/$TESTNAME"
+    rm -r "${XDDTEST_LOCAL_MOUNT}/${TESTNAME}"
 }
 
 #
@@ -134,7 +131,7 @@ cleanup_test_data() {
 #
 fail() {
     local message="$1"
-    printf "%-20s\t%10s: %s\n" "$TESTNAME" "FAIL" "$message"
+    printf "%-20s\t%10s: %s\n" "${TESTNAME}" "FAIL" "${message}"
 }
 
 #
@@ -149,5 +146,5 @@ pass() {
 #
 skip() {
     local message="$1"
-    printf "%-20s\t%10s: %s\n" "$TESTNAME" "SKIPPED" "$message"
+    printf "%-20s\t%10s: %s\n" "${TESTNAME}" "SKIPPED" "${message}"
 }

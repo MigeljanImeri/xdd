@@ -1,4 +1,4 @@
-configure_file(common.sh common.sh)
+configure_file(common.sh common.sh COPYONLY)
 
 # original tests depended on xdd being installed
 option(TEST_INSTALLED "Use installed xdd for tests" ON)
@@ -15,7 +15,7 @@ if (NOT Time_EXECUTABLE)
   message(CHECK_FAIL "not found: ctest will skip tests test_xdd_{passdelay/startdelay}")
 else()
   message(CHECK_PASS "found")
-endif() 
+endif()
 
 # configurable output directory
 set(TESTDIR "${CMAKE_BINARY_DIR}/test-dir" CACHE PATH "Where to place test files")
