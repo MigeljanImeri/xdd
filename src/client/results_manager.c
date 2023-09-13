@@ -65,6 +65,10 @@ xdd_results_manager(void *data) {
 	xdd_init_barrier_occupant(&barrier_occupant, "RESULTS_MANAGER", (XDD_OCCUPANT_TYPE_SUPPORT), NULL);
 	xdd_barrier(&planp->main_general_init_barrier,&barrier_occupant,0);
 
+	if (xgp->global_options & GO_DRYRUN) {
+		return(0);
+	}
+
 	// This is the loop that runs continuously throughout the xdd run
 	while (1) {
 		// This barrier will release all the targets at the start of a pass so they all start at the same time

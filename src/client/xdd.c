@@ -67,6 +67,7 @@ DFLOW("\n----------------------All targets should start now---------------------
 	// At this point all the Target threads are running and we will enter the final_barrier 
 	// waiting for them to finish or exit if this is just a dry run
 	if (xgp->global_options & GO_DRYRUN) {
+		fprintf(xgp->output, "Run has ended due to dry run option being enabled. \n");
 		// Cleanup the semaphores and barriers 
 		xdd_destroy_all_barriers(planp);
 		return(XDD_RETURN_VALUE_SUCCESS);

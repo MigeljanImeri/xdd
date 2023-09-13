@@ -1,5 +1,6 @@
 set(FUNCTIONAL
     test_xdd_createnewfiles2.sh
+    test_xdd_dryrun.sh
     test_xdd_heartbeat_byte.sh
     test_xdd_heartbeat_elapsed.sh
     test_xdd_heartbeat_lf.sh
