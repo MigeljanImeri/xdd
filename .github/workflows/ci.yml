@@ -52,4 +52,4 @@ jobs:
     - name: Install ShellCheck
       run: sudo apt -y install shellcheck
     - name: Run ShellCheck
-      run: shellcheck -s bash -e SC1091 $(find -name "*.sh" | sort)
+      run: contrib/CI/shellcheck.sh .

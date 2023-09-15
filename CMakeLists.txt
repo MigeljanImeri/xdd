@@ -79,6 +79,9 @@ add_subdirectory(src)
 enable_testing()
 add_subdirectory(tests)
 
+# set up extra files
+add_subdirectory(contrib)
+
 # optionally build docs
 find_package(Doxygen COMPONENTS dot)
 if (DOXYGEN_FOUND)
