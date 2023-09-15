@@ -82,42 +82,6 @@ generate_local_filename() {
 }
 
 #
-# Create local test file of size n, outputs filename
-#
-generate_local_file() {
-    local varname="$1"
-    local size="$2"
-
-    if [[ -z "${size}" ]]; then
-        echo "No test file data size specified."
-        finalize_test 2
-    fi
-
-    local lfname=""
-    generate_local_filename lfname
-    "${XDDTEST_XDD_EXE}" -op write -target "${lfname}" -reqsize 1 -blocksize "$((1024*1024))" -bytes "${size}" -datapattern random >/dev/null 2>&1
-
-    # Ensure the file size is correct
-    # shellcheck disable=SC2086
-    asize="$(${XDDTEST_XDD_GETFILESIZE_EXE} ${lfname})"
-    if [[ "${asize}" != "${size}" ]]; then
-        echo "Unable to generate test file data of size: ${size}"
-        finalize_test 2
-    fi
-
-    # Ensure the file isn't all zeros
-    read -r -n 4 < /dev/zero
-    local data="${REPLY}"
-    read -r -n 4 < "${lfname}"
-    if [[ "${REPLY}" = "${data}" ]]; then
-        echo "Unable to generate random test file data"
-        finalize_test 2
-    fi
-    eval "${varname}=${lfname}"
-    return 0
-}
-
-#
 # Remove any generated test data
 #
 cleanup_test_data() {
