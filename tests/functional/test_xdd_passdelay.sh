@@ -7,10 +7,13 @@
 # Validate -passdelay by checking if the run time is greater
 #	 or equal to n-1 seconds times the amount of passes
 #
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
 # Source the test configuration environment
-#
-source ../test_config
-source ../common.sh
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 # Pre-test set-up
 initialize_test

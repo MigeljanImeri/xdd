@@ -7,10 +7,13 @@
 # Description - Just writes out to /dev/null using XDD with -debug INIT and verifies
 #               that the NUMA cpus are listed if requested through the debug flag
 #
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
 # Source the test configuration environment
-#
-source ../test_config
-source ../common.sh
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 initialize_test
 

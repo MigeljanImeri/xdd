@@ -4,10 +4,13 @@
 #
 # Verify -hb byte, kbyte, mbyte, gbyte by checking if heartbeat output bytes equals actual transfered bytes and if output bytes matches output kbytes, mbytes, and gbytes
 #
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
 # Source the test configuration environment
-#
-source ../test_config
-source ../common.sh
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 # Pre-test set-up
 

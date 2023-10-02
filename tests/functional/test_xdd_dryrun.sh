@@ -6,10 +6,13 @@
 #
 # Description - passes the dry run option to a simple xdd command 
 #
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
 # Source the test configuration environment
-#
-source ../test_config
-source ../common.sh
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 # Perform pre-test
 initialize_test
@@ -24,7 +27,7 @@ data_file="${test_dir}/test"
 
 # now run dryrun
 sleep_seconds=2
-"${XDDTEST_XDD_EXE}" -op read  -reqsize 1 -targets 1 "${data_file}" -dryrun &
+"${XDDTEST_XDD_EXE}" -op read  -reqsize 1 -numreqs 1 -targets 1 "${data_file}" -dryrun &
 pid=$!
 
 # sleep for 2 seconds before checking if XDD process is still running

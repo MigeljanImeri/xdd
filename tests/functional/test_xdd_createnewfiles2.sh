@@ -6,11 +6,14 @@
 # enabled
 #
 # Description - creates target file on unaligned files with dio enabled for each pass in an XDD run
-#
+
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
 # Source the test configuration environment
-#
-source ../test_config
-source ../common.sh
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 initialize_test
 data_file="${XDDTEST_LOCAL_MOUNT}/${TESTNAME}/test"

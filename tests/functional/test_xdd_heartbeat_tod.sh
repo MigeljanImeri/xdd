@@ -4,9 +4,13 @@
 #
 # Validate -hb tod by comparing it to current time
 #
-# Source test configuration environment
-source ../test_config
-source ../common.sh
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
+# Source the test configuration environment
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 # pre-test set-up
 initialize_test

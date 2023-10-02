@@ -6,9 +6,13 @@
 #
 # Validate -startoffset by comparing the size of a file starting from block 0 to its size starting from the nth block
 #
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
 # Source the test configuration environment
-source ../test_config
-source ../common.sh
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 # Pre-test set-up
 initialize_test

@@ -6,10 +6,13 @@
 #
 # Verify -reopen by checking if (number of opens and closes during a pass + 1) equals number of opens and closes during the next incremented pass
 #
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
 # Source the test configuration environment
-#
-source ../test_config
-source ../common.sh
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 # pre-test set-up
 initialize_test

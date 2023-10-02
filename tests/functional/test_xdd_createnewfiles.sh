@@ -5,11 +5,14 @@
 # Validate the output results of -createnewfiles on 1GB files
 #
 # Description - creates target file for each pass in an XDD run
-#
+
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
 # Source the test configuration environment
-#
-source ../test_config
-source ../common.sh
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 
 # Create the test location

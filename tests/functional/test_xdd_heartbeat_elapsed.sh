@@ -5,8 +5,13 @@
 # Description: outputs the elapsed time since the start of run
 # Verify heartbeat elapsed time options works
 #
-source ../test_config
-source ../common.sh
+# Get absolute path to script
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTPATH=$(dirname "${SCRIPT}")
+
+# Source the test configuration environment
+source "${SCRIPTPATH}"/../test_config
+source "${SCRIPTPATH}"/../common.sh 
 
 # Pre-test set-up
 initialize_test
