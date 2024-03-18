@@ -156,7 +156,6 @@ struct xint_target_data {
 	struct xint_e2e				*td_e2ep;			// Pointer to the e2e struct when needed
 	struct xint_extended_stats	*td_esp;			// Extended Stats Structure Pointer
 	struct xint_triggers		*td_trigp;			// Triggers Structure Pointer
-	int                         dpp_fd;             // File descriptor for file data pattern
 	struct xint_data_pattern	*td_dpp;			// Data Pattern Structure Pointer
 	struct xint_raw				*td_rawp;          	// RAW Data Structure Pointer
 	struct lockstep				*td_lsp;			// Pointer to the lockstep structure used by the lockstep option

@@ -555,6 +555,8 @@ xddfunc_datapattern(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 		}
 	} else if (strcmp(pattern_type, "file") == 0 ||  strcmp(pattern_type, "wholefile") == 0) {
 		retval++;
+		int dp_fd = -1;
+
 		if (argc <= args+2) {
 			fprintf(xgp->errout, "%s: not enough arguments specified for the option '-datapattern'\n", xgp->progname);
 			return(0);
@@ -566,61 +568,48 @@ xddfunc_datapattern(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 					(char *)argv[args+2]);
 				return(0);
 			}
-			pattern_length = stat_buf.st_size;
+		
 		}
 		if (tdp) { /* set option for specific target */
 			if (strcmp(pattern_type, "file") == 0) {
 				tdp->td_dpp->data_pattern_options |= DP_FILE_PATTERN;
 			} else {// wholefile
 				tdp->td_dpp->data_pattern_options |= DP_WHOLEFILE_PATTERN;
+				if (!xdd_datapattern_wholefile_enough_ram(tdp, argv[args+2])) {
+					return(0);
+				}
 			}
-			tdp->td_dpp->data_pattern_filename = (char *)argv[args+2];
-			tdp->td_dpp->data_pattern_length = pattern_length;
-			if (!xdd_datapattern_wholefile_enough_ram(tdp)) {
-				fprintf(xgp->errout, "%s: file %s can not be loaded into memory because 50%% of RAM is "
-					"currently unavailable\n",
-					xgp->progname,
-					(char *)argv[args+2]);
+			tdp->td_dpp->data_pattern_length = stat_buf.st_size;
+			if(xdd_set_datapattern_from_filename(tdp, argv[args+2])) {
 				return(0);
 			}
-			tdp->dpp_fd = open(tdp->td_dpp->data_pattern_filename, O_RDONLY);
-			if (tdp->dpp_fd < 0) {
-				fprintf(xgp->errout, "%s: could not open %s\n", xgp->progname, tdp->td_dpp->data_pattern_filename);
-				return(0);
-			}
-			tdp->td_dpp->data_pattern = (unsigned char *)malloc(sizeof(unsigned char) * (tdp->td_dpp->data_pattern_length + 1));
-			memset(tdp->td_dpp->data_pattern, '\0', sizeof(unsigned char) * (tdp->td_dpp->data_pattern_length + 1));
-			pread(tdp->dpp_fd, tdp->td_dpp->data_pattern, tdp->td_dpp->data_pattern_length, 0);
 		} else {// Put this option into all Targets
 			if (flags & XDD_PARSE_PHASE2) {
 				tdp = planp->target_datap[0];
+				tdp->td_dpp->data_pattern_length = stat_buf.st_size;
 				i = 0;
+				dp_fd = open(argv[args+2], O_RDONLY);
+				if (dp_fd < 0) {
+					fprintf(xgp->errout, "%s: could not open %s\n", xgp->progname, argv[args+2]);
+					return(0);
+				}
+				if (strcmp(pattern_type, "file") == 0) {
+					tdp->td_dpp->data_pattern_options |= DP_FILE_PATTERN;
+				} else {//wholefile
+					tdp->td_dpp->data_pattern_options |= DP_WHOLEFILE_PATTERN;
+					if (!xdd_datapattern_wholefile_enough_ram(tdp, argv[args+2])) {
+						return(0);
+					}
+				}
 				while (tdp) {
-					if (strcmp(pattern_type, "file") == 0) {
-						tdp->td_dpp->data_pattern_options |= DP_FILE_PATTERN;
-					} else {//wholefile
-						tdp->td_dpp->data_pattern_options |= DP_WHOLEFILE_PATTERN;
-					}
-					tdp->td_dpp->data_pattern_filename = (char *)argv[args+2];
-					tdp->td_dpp->data_pattern_length = pattern_length;
-					if (!xdd_datapattern_wholefile_enough_ram(tdp)) {
-						fprintf(xgp->errout, "%s: the file %s is larger than 50%% of total RAM\n",
-							xgp->progname,
-							(char *)argv[args+2]);
+					if (xdd_set_datapattern_from_file_descriptor(tdp, dp_fd, argv[args+2])) {
+						close(dp_fd);
 						return(0);
 					}
-					tdp->dpp_fd = open(tdp->td_dpp->data_pattern_filename, O_RDONLY);
-					if (tdp->dpp_fd < 0) {
-						fprintf(xgp->errout, "%s: could not open %s\n", xgp->progname, tdp->td_dpp->data_pattern_filename);
-						return(0);
-					}
-					tdp->td_dpp->data_pattern_length = pattern_length;
-					tdp->td_dpp->data_pattern = (unsigned char *)malloc(sizeof(unsigned char) * (tdp->td_dpp->data_pattern_length + 1));
-					memset(tdp->td_dpp->data_pattern, '\0', sizeof(unsigned char) * (tdp->td_dpp->data_pattern_length + 1));
-					pread(tdp->dpp_fd, tdp->td_dpp->data_pattern, tdp->td_dpp->data_pattern_length, 0);
 					i++;
 					tdp = planp->target_datap[i];
 				}
+				close(dp_fd);
 			}
 		}
 	} else if (strcmp(pattern_type, "sequenced") == 0) {

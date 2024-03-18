@@ -257,21 +257,91 @@ xdd_datapattern_fill(worker_data_t *wdp) {
  * WHOLEFILE_MAX_SIZE_RAM.
  */
 int
-xdd_datapattern_wholefile_enough_ram(target_data_t *tdp) {
-	int ret = TRUE;
+xdd_datapattern_wholefile_enough_ram(target_data_t *tdp, const char *filename) {
 	struct sysinfo info;
 	size_t file_size = tdp->td_dpp->data_pattern_length;
 
+	assert(tdp->td_dpp->data_pattern_options & DP_WHOLEFILE_PATTERN);
+
 	// Short circuit empty files
 	if (!file_size)
-		return FALSE;
+		goto error;
 
 	sysinfo(&info);
 	if (file_size > (info.freeram * WHOLEFILE_MAX_SIZE_RAM))
-		ret = FALSE;
+		goto error;;
+
+	return TRUE;
+
+error:
+	fprintf(xgp->errout, "%s: file %s can not be loaded into memory because 50%% of RAM is "
+		"currently unavailable\n",
+		xgp->progname,
+		filename);
+
+	return FALSE;
+} // End of xdd_datapattern_wholefile_enough_ram() 
+
+/*----------------------------------------------------------------------------*/
+/* xdd_set_datapattern_from_filename() - This subroutine will set the targets
+ * data_pattern from a file. The targets td_dpp->data_pattern_length must be
+ * set before calling this. On error returns 1, and on success returns 0.
+ */
+int
+xdd_set_datapattern_from_filename(target_data_t *tdp, char *filename) {
+	struct xint_data_pattern *dp = tdp->td_dpp;
+	int ret = 0;
+
+	int fd = open(filename, O_RDONLY);
+	if (fd < 0 ) {
+		fprintf(xgp->errout, "%s, could not open %s\n", xgp->progname, filename);
+		return  1;
+	}
+
+	dp->data_pattern_filename = filename;
+	ret = xdd_set_datapattern_from_file_descriptor(tdp, fd, filename);
+	close(fd);
 
 	return ret;
-} // End of xdd_datapattern_wholefile_enough_ram() 
+} // End of xdd_set_datapattern_from_filename() 
+
+/*----------------------------------------------------------------------------*/
+/* xdd_set_datapattern_from_file_descriptor() - This subroutine will set the
+ * targets data_pattern from an open file descriptor. The targets
+ * td_dpp->data_pattern_length must be set before calling this. On error returns 1,
+ * and on success returns 0.
+ */
+int
+xdd_set_datapattern_from_file_descriptor(target_data_t *tdp, int fd, char *filename) {
+	struct xint_data_pattern *dp = tdp->td_dpp;
+
+	// Short circuit if the file is not open
+	if (fd < 0) {
+		return 1;
+	}
+
+	dp->data_pattern_filename = filename;
+	dp->data_pattern = (unsigned char *)malloc(sizeof(unsigned char) * dp->data_pattern_length + 1)	;
+	if (!dp->data_pattern) {
+		fprintf(xgp->errout, "%s: could not allocate datapattern buffer for target %d",
+			xgp->progname, tdp->td_target_number);
+		goto error;
+	}
+
+	size_t bytes = pread(fd, dp->data_pattern, dp->data_pattern_length, 0);
+	if (bytes != dp->data_pattern_length) {
+		fprintf(xgp->errout, "%s: short read from file %s when setting target datapattern. "
+			"Espected %zu bytes but got %zu",
+			xgp->progname, filename, dp->data_pattern_length, bytes);
+			goto error;
+	}
+
+	return 0;
+
+error:
+	free(dp->data_pattern);
+	return 1;
+} // End of xdd_set_datapattern_from_file_descriptor() 
 
 /*----------------------------------------------------------------------------*/
 /* xdd_datapattern_get_datap_from_offset() - This subroutine will return the

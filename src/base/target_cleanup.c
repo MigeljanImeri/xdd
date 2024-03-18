@@ -69,7 +69,6 @@ xdd_target_thread_cleanup(target_data_t *tdp) {
             /* If the file target opend a file for the data pattern we must close
             * the files and clean up the data_pattern buffer
             */
-            close(tdp->dpp_fd);
             free(tdp->td_dpp->data_pattern);
         }
         free(tdp->td_dpp);

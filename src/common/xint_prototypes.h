@@ -35,7 +35,9 @@ int32_t	xdd_barrier(struct xdd_barrier *bp, xdd_occupant_t *occupantp, char owne
 // datapatterns.c
 void	xdd_datapattern_buffer_init(worker_data_t *wdp);
 void	xdd_datapattern_fill(worker_data_t *wdp);
-int		xdd_datapattern_wholefile_enough_ram(target_data_t *tdp);
+int	xdd_datapattern_wholefile_enough_ram(target_data_t *tdp, const char *filename);
+int	xdd_set_datapattern_from_filename(target_data_t *tdp, char *filename);
+int	xdd_set_datapattern_from_file_descriptor(target_data_t *tdp, int fd, char *filename);
 unsigned char *xdd_datapattern_get_datap_from_offset(worker_data_t *wdp);
 
 // debug.c
