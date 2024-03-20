@@ -7,6 +7,8 @@ jobs:
     name: build
 
     runs-on: ubuntu-latest
+    env:
+      CFLAGS: -Wall -Wextra -Wno-unused-parameter -Werror -pedantic
     strategy:
       matrix:
         img: ["ubuntu:20.04", "ubuntu:22.04", "centos:8" ]

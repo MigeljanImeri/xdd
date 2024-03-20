@@ -76,7 +76,7 @@ int xddfunc_nobarrier(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t fl
 int xddfunc_nomemlock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_noordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_noproclock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
-#if HAVE_CPU_SET_T
+#if HAVE_ENABLE_NUMA
 int xddfunc_numactl(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 #endif
 int xddfunc_numreqs(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);

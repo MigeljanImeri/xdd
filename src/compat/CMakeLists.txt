@@ -15,6 +15,7 @@ list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 list(APPEND CMAKE_REQUIRED_LIBRARIES -pthread) # CMP0075, requires CMake 3.12
 
 # functions
+list(APPEND CMAKE_REQUIRED_FLAGS -Wno-pedantic)
 check_symbol_exists(clock_gettime               "time.h"        HAVE_CLOCK_GETTIME)
 check_symbol_exists(initstate                   "stdlib.h"      HAVE_INITSTATE)
 check_symbol_exists(memset                      "string.h"      HAVE_MEMSET)
@@ -27,8 +28,10 @@ check_symbol_exists(random                      "stdlib.h"      HAVE_RANDOM)
 check_symbol_exists(rand                        "stdlib.h"      HAVE_RAND)
 check_symbol_exists(sched_getcpu                "sched.h"       HAVE_SCHED_GETCPU)
 check_symbol_exists(sched_setscheduler          "sched.h"       HAVE_SCHED_SETSCHEDULER)
+list(REMOVE_ITEM CMAKE_REQUIRED_FLAGS -Wno-pedantic)
 
 # features
+list(APPEND CMAKE_REQUIRED_FLAGS -Wno-unused-variable)
 check_symbol_exists(BLKGETSIZE64                "linux/fs.h"    HAVE_DECL_BLKGETSIZE64)
 check_c_source_compiles("#include <sched.h>
 int main() { cpu_set_t cpuset; return 0; }" HAVE_CPU_SET_T)
@@ -37,6 +40,7 @@ int main() { pthread_barrier_t pb; return 0; }" HAVE_PTHREAD_BARRIER_T)
 check_c_source_compiles("#include <stddef.h>
 int main() { size_t sz; return 0; }" HAVE_SIZE_T)
 check_symbol_exists(TCP_CONGESTION              "netinet/tcp.h" HAVE_DECL_TPC_CONGESTION)
+list(REMOVE_ITEM CMAKE_REQUIRED_FLAGS -Wno-unused-variable)
 
 list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES -pthread)
 list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)

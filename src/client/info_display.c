@@ -141,8 +141,6 @@ xdd_target_info(FILE *out, target_data_t *tdp) {
 	//ptds_t 				*masterp, *slavep;
 	//lockstep_t			*master_lsp, *slave_lsp;
 	xint_data_pattern_t	*dpp;
-	unsigned int j;
-
 	fprintf(out,"\tTarget number, %d\n",tdp->td_target_number);
 	fprintf(out,"\t\tFully qualified target pathname, '%s'\n",tdp->td_target_full_pathname);
 	fprintf(out,"\t\tTarget directory, %s\n",(strlen(tdp->td_target_directory)==0)?"\"./\"":tdp->td_target_directory);
@@ -151,7 +149,7 @@ xdd_target_info(FILE *out, target_data_t *tdp) {
 #if HAVE_CPU_SET_T
     if (strlen(tdp->numa_node_list) > 0) {
 		fprintf(out, "\t\tWorker threads pinned in NUMA domains, ");
-		for (j = 0; j < strlen(tdp->numa_node_list); j++) {
+		for (size_t j = 0; j < strlen(tdp->numa_node_list); j++) {
 			if (j != strlen(tdp->numa_node_list) - 1)
 				fprintf(out, "%c, ", tdp->numa_node_list[j]);
 			else
