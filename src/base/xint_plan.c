@@ -161,6 +161,9 @@ int xint_plan_start_targets(xdd_plan_t *planp) {
 			perror("Reason");
 			return(-1);
 		}
+
+		pthread_detach(tdp->td_thread);
+
 		// Wait for the Target Thread to complete initialization and then create the next one
 		xdd_barrier(&planp->main_general_init_barrier,&barrier_occupant,1);
 
@@ -194,6 +197,9 @@ void xint_plan_start_results_manager(xdd_plan_t *planp) {
 		xdd_destroy_all_barriers(planp);
 		exit(XDD_RETURN_VALUE_INIT_FAILURE);
 	}
+
+	pthread_detach(planp->Results_Thread);
+
 	// Enter this barrier and wait for the results monitor to initialize
 	xdd_barrier(&planp->main_general_init_barrier,&barrier_occupant,1);
 
@@ -264,6 +270,37 @@ void xint_plan_start_interactive(xdd_plan_t *planp) {
 	}
 
 } // End of xdd_start_interactive()
+
+/* Will free all malloced objects associated with xdd_plan_t */
+void xint_plan_cleanup(xdd_plan_t *planp) {
+	
+	target_data_t *tdp;
+	worker_data_t *wdp;
+	worker_data_t *temp;
+
+	for (int32_t i = 0; i < planp->number_of_targets; i++) {
+		if (planp->target_datap[i] != 0) {
+
+			tdp = planp->target_datap[i];
+			wdp = tdp->td_next_wdp;
+
+			while (wdp) {
+				temp = wdp;
+				wdp = wdp->wd_next_wdp;
+				free(temp);
+			}
+
+			free(tdp);
+
+			if (planp->target_average_resultsp[i] != 0)
+					free(planp->target_average_resultsp[i]);
+		}
+	}
+
+	free(xgp->id);
+	free(xgp);	
+	free(planp);
+}// End of xint_plan_cleaup()
 
 /*
  * Plan finalize

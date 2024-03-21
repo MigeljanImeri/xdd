@@ -171,6 +171,8 @@ void xint_plan_start_restart_monitor(xdd_plan_t* planp);
 
 void xint_plan_start_interactive(xdd_plan_t* planp);
 
+void xint_plan_cleanup(xdd_plan_t* planp);
+
 #endif
 /*
  * Local variables:

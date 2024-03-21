@@ -87,5 +87,11 @@ xdd_target_thread_cleanup(target_data_t *tdp) {
             perror("reason");
 		}
 	}
+	/* Free target seek list created in xint_target_init */
+	free(tdp->td_seekhdr.seeks);
+	/* Free target offset table created in xint_target_init */
+	tot_destroy(tdp->td_totp);
+	/* Free filename malloced in xdd_target_name */
+	free(tdp->td_target_full_pathname);
 
 } // End of xdd_target_thread_cleanup()

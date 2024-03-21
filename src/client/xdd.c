@@ -110,6 +110,7 @@ DFLOW("\n----------------------All targets should start now---------------------
 	xdd_destroy_all_barriers(planp);
 
 	/* Time to leave... sigh */
+	xint_plan_cleanup(planp);
 	return(return_value);
 } /* end of main() */
  

@@ -58,7 +58,7 @@ xdd_results_manager(void *data) {
 	status = xdd_results_manager_init(planp);
 	if (status < 0)  {
 		fprintf(stderr,"%s: xdd_results_manager: ERROR: Exiting due to previous initialization failure.\n",xgp->progname);
-		return(0);
+		goto out;
 	}
 	
 	// Enter this barrier to release main indicating that results manager has initialized
@@ -66,7 +66,7 @@ xdd_results_manager(void *data) {
 	xdd_barrier(&planp->main_general_init_barrier,&barrier_occupant,0);
 
 	if (xgp->global_options & GO_DRYRUN) {
-		return(0);
+		goto out;
 	}
 
 	// This is the loop that runs continuously throughout the xdd run
@@ -84,7 +84,7 @@ xdd_results_manager(void *data) {
 			xdd_process_run_results(planp);
 			// Release all the Target Threads so that they can do their cleanup and exit
 			xdd_barrier(&planp->results_targets_display_barrier,&barrier_occupant,1);
-			return(0);
+			goto out;
 		}
 
 		// Display the header and units line if necessary
@@ -106,7 +106,7 @@ xdd_results_manager(void *data) {
 
 			// Enter the FINAL barrier to tell XDD MAIN that everything is complete
 			xdd_barrier(&planp->main_results_final_barrier,&barrier_occupant,0);
-			return(0);
+			goto out;
 		} else { 
 			xdd_process_pass_results(planp);
 			planp->current_pass_number++;
@@ -134,6 +134,8 @@ xdd_results_manager(void *data) {
 		xdd_barrier(&planp->results_targets_display_barrier,&barrier_occupant,1);
 
 	} // End of main WHILE loop for the results_manager()
+out:
+	free(tmprp);
 	return(0);
 } // End of xdd_results_manager() 
 

@@ -305,6 +305,9 @@ xint_target_init_start_worker_threads(target_data_t *tdp) {
 		perror("Reason");
 		return(-1);
 	    }
+
+	    pthread_detach(wdp->wd_thread);
+		
 	    /* Wait for the previous thread to initialize before creating the next one */
 	    xdd_barrier(&tdp->td_target_worker_thread_init_barrier,&tdp->td_occupant,1);
 	    if (xgp->global_options & GO_REALLYVERBOSE) {
