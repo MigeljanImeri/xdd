@@ -23,7 +23,7 @@
 //            struct xdd_func {
 //	              char    *func_name;     /* name of the function */
 //	              char    *func_alt;      /* Alternate name of the function */
-//                int     (*func_ptr)(int32_t argc, char *argv[], uint32_t flags, uint32_t flags);      /* pointer to the function */
+//                int     (*func_ptr)(int32_t argc, char *argv[], uint32_t flags);      /* pointer to the function */
 //                int     argc;           /* number of arguments */
 //                char    *help;          /* help string */
 //                char    *ext_help[5];   /* Extented help strings */

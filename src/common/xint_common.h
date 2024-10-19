@@ -34,6 +34,7 @@
 #define MAX_TARGETS 8192
 #define MAX_TARGET_NAME_LENGTH 2048
 #define MAXSEM 1
+#define LINE_LENGTH 1024
 
 /* program defines */
 #define COMMENT '#'

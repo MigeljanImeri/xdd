@@ -3509,7 +3509,10 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		args_index += args;  /* skip past the "target <taget number>" */
 	}
 	/* At this point "args_index" is an index to the seek "option" argument */
-	if (strcmp(argv[args_index], "save") == 0) { /* save the seek information in a file */
+	if (argv[args_index] == NULL) {
+		fprintf(stderr, "%s: ERROR: No seek option specified. Please give a valid seek option.\n", xgp->progname);
+		return(-1);
+	} else if (strncmp(argv[args_index], "save", 5) == 0) { /* save the seek information in a file */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3528,7 +3531,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+2);
-	} else if (strcmp(argv[args_index], "load") == 0) { /* load seek list from "filename" */
+	} else if (strncmp(argv[args_index], "load", 5) == 0) { /* load seek list from "filename" */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3547,7 +3550,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+2);
-	} else if (strcmp(argv[args_index], "disthist") == 0) { /*  Print a Distance Histogram */
+	} else if (strncmp(argv[args_index], "disthist", 9) == 0) { /*  Print a Distance Histogram */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3566,7 +3569,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+2);
-	} else if (strcmp(argv[args_index], "seekhist") == 0) { /* Print a Seek Histogram */
+	} else if (strncmp(argv[args_index], "seekhist", 9) == 0) { /* Print a Seek Histogram */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3585,7 +3588,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+2);
-	} else if (strcmp(argv[args_index], "sequential") == 0) { /*  Sequential seek list option */
+	} else if (strncmp(argv[args_index], "sequential", 11) == 0) { /*  Sequential seek list option */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3604,7 +3607,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+1);
-	} else if (strcmp(argv[args_index], "random") == 0) { /*  Random seek list option */
+	} else if (strncmp(argv[args_index], "random", 7) == 0) { /*  Random seek list option */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3623,7 +3626,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+1);
-	} else if (strcmp(argv[args_index], "stagger") == 0) { /*  Staggered seek list option */
+	} else if (strncmp(argv[args_index], "stagger", 8) == 0) { /*  Staggered seek list option */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3644,7 +3647,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+2);
-	} else if (strcmp(argv[args_index], "interleave") == 0) { /* set the interleave for sequential seek locations */
+	} else if (strncmp(argv[args_index], "interleave", 11) == 0) { /* set the interleave for sequential seek locations */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3663,7 +3666,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+2);
-	} else if (strcmp(argv[args_index], "none") == 0) { /* no seeking at all */
+	} else if (strncmp(argv[args_index], "none", 5) == 0) { /* no seeking at all */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3682,7 +3685,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+1);
-	} else if (strcmp(argv[args_index], "range") == 0) { /* set the range of seek locations */
+	} else if (strncmp(argv[args_index], "range", 6) == 0) { /* set the range of seek locations */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
@@ -3699,7 +3702,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			}
 		}
 		return(args_index+2);
-	} else if (strcmp(argv[args_index], "seed") == 0) { /* set the seed for random seek locations */
+	} else if (strncmp(argv[args_index], "seed", 5) == 0) { /* set the seed for random seek locations */
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);

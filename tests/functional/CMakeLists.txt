@@ -9,6 +9,7 @@ set(FUNCTIONAL
     test_xdd_heartbeat_output.sh
     test_xdd_heartbeat_target.sh
     test_xdd_heartbeat_tod.sh
+    test_xdd_load_file.sh
     test_xdd_lockstep1.sh
     test_xdd_lockstep2.sh
     test_xdd_pretruncate.sh
