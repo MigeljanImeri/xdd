@@ -20,7 +20,8 @@
 /** A single seek entry */
 struct seek_entries {
 	int32_t operation; /**< read or write */
-	int32_t reqsize; /**< Size of data transfer in blocks */
+	int32_t blocksize; /**< Size of data transfer in blocks */
+	int32_t reqsize; /**< Number of blocks in the request */
 	uint64_t block_location; /**< Starting location in blocks */
 	nclk_t time1;  /**< Relative time in nano seconds that this operation should start */
 	nclk_t time2;  /**< not yet implemented */

@@ -198,6 +198,8 @@ xdd_init_seek_list(target_data_t *tdp) {
                                 (rw_op_index * ((tdp->td_reqsize*sp->seek_interleave) + gap));
 			/* end of generating a sequential seek */
 			
+			/* Now lets fill in the block sizes to transfer */
+			sp->seeks[rw_index].blocksize = tdp->td_block_size;
 			/* Now lets fill in the request sizes to transfer */
 			sp->seeks[rw_index].reqsize = tdp->td_reqsize;
 			/* Now lets fill in the appropriate operation */
@@ -350,11 +352,12 @@ xdd_save_seek_list(target_data_t *tdp) {
 		}
 		average = (uint64_t)(total / sp->seek_total_ops);
 		/* Print the seek list into the specified file */
-		fprintf(tmp,"# Longest seek=%llu, Shortest seek=%llu, Average seek distance=%llu\n",
+		fprintf(tmp,"# Longest seek=%llu, Shortest seek=%llu, Average seek distance=%llu, Number of Requests=%ld\n",
 			(unsigned long long)longest, 
 			(unsigned long long)shortest, 
-			(unsigned long long)average);
-		fprintf(tmp,"#Ordinal Location Reqsize Operation Time1 Time2\n"); 
+			(unsigned long long)average,
+			(long int)tdp->td_numreqs);
+		fprintf(tmp,"#Ordinal Location Blocksize Reqsize Operation Time1 Time2\n"); 
 		for (i = 0; i < sp->seek_total_ops; i++) {
 			if (sp->seeks[i].operation == SO_OP_READ) 
 				opc = "r";
@@ -366,17 +369,19 @@ xdd_save_seek_list(target_data_t *tdp) {
 				opc = "u";
 			
 			if (tdp->td_seekhdr.seek_options & SO_SEEK_NONE) {
-				fprintf(tmp,"%010d %012llu %d %s %016llu %016llu\n",
+				fprintf(tmp,"%010d %012llu %d %d %s %016llu %016llu\n",
 					i,
 					(unsigned long long)sp->seeks[0].block_location, 
+					sp->seeks[0].blocksize, 
 					sp->seeks[0].reqsize, 
 					opc, 
 					(unsigned long long)(sp->seeks[i].time1),
 					(unsigned long long)(sp->seeks[i].time2));
 			} else {
-				fprintf(tmp,"%010d %012llu %d %s %016llu %016llu\n",
+				fprintf(tmp,"%010d %012llu %d %d %s %016llu %016llu\n",
 					i,
 					(unsigned long long)sp->seeks[i].block_location, 
+					sp->seeks[i].blocksize, 
 					sp->seeks[i].reqsize, 
 					opc, 
 					(unsigned long long)(sp->seeks[i].time1),
@@ -463,13 +468,14 @@ xdd_load_seek_list(target_data_t *tdp) {
 	char 		*tp;  		/* token pointer */
 	int32_t 	ordinal; 	/* ordinal number of the seek */
 	uint64_t 	loc;  		/* location */
+	int32_t     blocksz;    /* Block Size */
 	int32_t 	reqsz; 		// Request Size
 	nclk_t		t1,t2; 		/* time1 and time2 */
 	int32_t 	reqsz_high; 	/* highest request size*/
 	char 		rw;  		/* read or write operation */
 	char 		*status; 	/* status of the fgets */
 	struct seekhdr	*sp;
-	char 		line[1024]; 	/* one line of characters */
+	char 		line[LINE_LENGTH]; 	/* one line of characters */
 
 
 	sp = &tdp->td_seekhdr;
@@ -484,7 +490,7 @@ xdd_load_seek_list(target_data_t *tdp) {
 	status = line;
 	i = 0;
 	reqsz_high = 0;
-	while (status != NULL) {
+	while (status != NULL && i < tdp->td_numreqs) {
 		status = fgets(line, sizeof(line), loadfp);
 		if (status == NULL ) continue;
 		tp = line;
@@ -493,19 +499,25 @@ xdd_load_seek_list(target_data_t *tdp) {
 		/* Check for comment line */
 		if (*tp == COMMENT) continue;
 		/* Must be a seek line */
-		sscanf(line,"%d %llu %d %c %llu %llu", 
+		if (sscanf(line,"%d %llu %d %d %c %llu %llu", 
 			&ordinal,
 			(unsigned long long *)(&loc),
+			&blocksz,
 			&reqsz,
 			&rw,
 			(unsigned long long *)(&t1),
-			(unsigned long long *)(&t2));
+			(unsigned long long *)(&t2)) != 7) {
+				fprintf(xgp->errout, "%s: Error: Cannot parse seek load file %s\n",
+						xgp->progname, sp->seek_loadfile);
+				return(-1);
+		}
 		sp->seeks[i].block_location = loc;
 		if ((rw == 'w') || (rw == 'W')) 
 			sp->seeks[i].operation = SO_OP_WRITE;
 		else if ((rw == 'n') || (rw == 'N')) 
 			sp->seeks[i].operation = SO_OP_NOOP; /* NOOP */
 		else sp->seeks[i].operation = SO_OP_READ; /* READ */
+		sp->seeks[i].blocksize = blocksz;
 		sp->seeks[i].reqsize = reqsz;
 		sp->seeks[i].time1 = t1;
 		sp->seeks[i].time2 = t2;
@@ -513,6 +525,8 @@ xdd_load_seek_list(target_data_t *tdp) {
 		i++;
 	}
 	sp->seek_iosize = reqsz_high * tdp->td_block_size;
+	/* close the load file */
+	fclose(loadfp);
 	return(0);
 } /* end of xdd_load_seek_list() */
 
