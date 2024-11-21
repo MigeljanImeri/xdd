@@ -15,7 +15,12 @@
  * with respect to the Target_Data and the Target_Data substructure.
  */
 #include "xint.h"
-
+#define PRINT_ERROR_AND_RETURN(pattern, filename) \
+	do { \
+		fprintf(xgp->errout, "%s: ERROR: Cannont parse %s from the first line of %s\n", \
+				xgp->progname, pattern, filename); \
+		return(-1); \
+	} while (0)
 
 /*----------------------------------------------------------------------------*/
 /* xdd_init_new_target_data() - Initialize the default Per-Target-Data-Structure
@@ -135,13 +140,11 @@ xdd_parse_value_from_line(char *line, const char *pattern, void *location, size_
 
 	if (size == sizeof(int32_t)) {
 		if (sscanf(line_str, "%*[^=]=%d", (int32_t *)location) != 1) {
-			fprintf(xgp->errout, "%s: ERROR: Cannot parse %s from the first line of %s\n",
-					xgp->progname, pattern, filename);
+			PRINT_ERROR_AND_RETURN(pattern, filename);
 		}
 	} else if (size == sizeof(int64_t)) {
 		if (sscanf(line_str, "%*[^=]=%ld", (int64_t *)location) != 1) {
-			fprintf(xgp->errout, "%s: ERROR: Cannot parse %s from the first line of %s\n",
-					xgp->progname, pattern, filename);
+			PRINT_ERROR_AND_RETURN(pattern, filename);
 		}
 	}
 
