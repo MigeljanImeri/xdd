@@ -57,8 +57,8 @@ struct xint_target_data {
 	int32_t   			td_file_desc;		// File Descriptor for the target device/file
 	int32_t				td_open_flags;		// Flags used during open processing of a target
 	int32_t				td_xfer_size;  		// Number of bytes per request
-	int32_t				td_filetype;  		// Type of file: regular, device, socket, ...
-	int64_t				td_filesize;  		// Size of target file in bytes
+	mode_t				td_filetype;  		// Type of file: regular, device, socket, ...
+	uint64_t			td_filesize;  		// Size of target file in bytes
 	uint64_t			td_target_ops;  	// Total number of ops to perform on behalf of a "target"
 	seekhdr_t			td_seekhdr;  		// For all the seek information
 	xint_timestamp_t 	td_ts_table;		// Timestamp Table
@@ -102,7 +102,7 @@ struct xint_target_data {
 	uint64_t			td_pass_offset; 			// number of blocks to add to seek locations between passes
 	int64_t				td_flushwrite;  			// number of write operations to perform between flushes
 	int64_t				td_flushwrite_current_count;  // Running number of write operations - used to trigger a flush (sync) operation
-	uint64_t				td_bytes;   				// number of bytes to process overall
+	uint64_t			td_bytes;   				// number of bytes to process overall
 #if HAVE_CPU_SET_T
 #define NUMA_NODE_LIST_LEN 100
 	cpu_set_t			cpumask;                    // NUMA domain CPU mask used for numactl
