@@ -99,7 +99,6 @@ int xddfunc_reallyverbose(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_
 int xddfunc_recreatefiles(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_reopen(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_report_threshold(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
-int xddfunc_reqsize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_restart(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_retry(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_roundrobin(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);

@@ -32,7 +32,6 @@ xdd_init_new_target_data(target_data_t *tdp, int32_t n) {
 	tdp->td_target_directory = DEFAULT_TARGETDIR; // can be changed by CLO
 	tdp->td_target_basename = DEFAULT_TARGET;  // can be changed by CLO
 	sprintf(tdp->td_target_extension,"%08d",1);  // can be changed by CLO
-	tdp->td_reqsize = DEFAULT_REQSIZE;  // can be changed by CLO
 	tdp->td_ts_table.ts_options = DEFAULT_TS_OPTIONS;
 	tdp->td_target_options = DEFAULT_TARGET_OPTIONS; // Zero the target options field
 	tdp->td_time_limit = DEFAULT_TIME_LIMIT;
@@ -78,7 +77,7 @@ xdd_init_new_target_data(target_data_t *tdp, int32_t n) {
 	tdp->td_seekhdr.seek_range = DEFAULT_RANGE;
 	tdp->td_seekhdr.seek_seed = DEFAULT_SEED;
 	tdp->td_seekhdr.seek_interleave = DEFAULT_INTERLEAVE;
-	tdp->td_seekhdr.seek_iosize = DEFAULT_REQSIZE*DEFAULT_BLOCKSIZE;
+	tdp->td_seekhdr.seek_iosize = DEFAULT_BLOCKSIZE;
 	tdp->td_seekhdr.seek_num_rw_ops = 0;
 	tdp->td_seekhdr.seek_total_ops = 0;
 	tdp->td_seekhdr.seek_NumSeekHistBuckets = DEFAULT_NUM_SEEK_HIST_BUCKETS;/* Number of buckets for seek histogram */
@@ -156,18 +155,17 @@ xdd_parse_value_from_line(char *line, const char *pattern, long int *location, c
 } /* end of xdd_parse_value_from_line */
 
 /*----------------------------------------------------------------------------*/
-/* xdd_set_bs_reqsize_numreqs_from_loadfile() - This function reads a target's
- * seek load file and sets the block size, request size (override the values
+/* xdd_set_bs_numreqs_from_loadfile() - This function reads a target's
+ * seek load file and sets the block size (override the values
  * from command line) and numreqs if td_numreqs and td_bytes are not provided.
  */
 static int32_t
-xdd_set_bs_reqsize_numreqs_from_loadfile(target_data_t *tdp) {
+xdd_set_bs_numreqs_from_loadfile(target_data_t *tdp) {
 	FILE	*loadfp;			/* Load File Point */
 	char	*line = NULL;		/* one line of characters */
 	size_t	length = 0;			/* length of the line */
 	int 	return_value = 0;
 	int 	block_size = 0;
-	int 	req_size = 0;
 	int64_t numreqs = 0;
 	struct seekhdr	*sp;
 
@@ -226,9 +224,6 @@ xdd_set_bs_reqsize_numreqs_from_loadfile(target_data_t *tdp) {
 	if (block_size > 0) {
 		tdp->td_block_size = block_size;
 	}
-	if (req_size > 0) {
-		tdp->td_reqsize = req_size;
-	}
 
 	free(line);
 	/* close the load file */
@@ -240,7 +235,7 @@ close_file_and_return:
 		fclose(loadfp);
 	}
 	return return_value;	
-} // End of xdd_set_bs_reqsize_numreqs_from_loadfile()
+} // End of xdd_set_bs_numreqs_from_loadfile()
 
 /*----------------------------------------------------------------------------*/
 /* xdd_build_target_data_substructure_calculate_xfer_info() - Will calculate the number of data
@@ -254,10 +249,10 @@ xdd_calculate_xfer_info(target_data_t *tdp) {
 	// The following calculates the number of I/O requests (numreqs) to issue to a "target"
 	// This value represents the total number of I/O operations that will be performed on this target.
 	/* Now lets get down to business... */
-	tdp->td_xfer_size = tdp->td_reqsize * tdp->td_block_size;
+	tdp->td_xfer_size = tdp->td_block_size;
 	if (tdp->td_xfer_size == 0) {
-		fprintf(xgp->errout,"%s: xdd_calculate_xfer_info: ALERT! iothread for target %d has an iosize of 0, reqsize of %d, blocksize of %d\n",
-			xgp->progname, tdp->td_target_number, tdp->td_reqsize, tdp->td_block_size);
+		fprintf(xgp->errout,"%s: xdd_calculate_xfer_info: ALERT! iothread for target %d has an iosize of 0, blocksize of %d\n",
+			xgp->progname, tdp->td_target_number, tdp->td_block_size);
 		fflush(xgp->errout);
 		tdp->td_target_bytes_to_xfer_per_pass = 0;
 		return;
@@ -418,10 +413,10 @@ xdd_build_target_data_substructure(xdd_plan_t* planp) {
 			xdd_build_target_data_substructure_e2e(planp, tdp);
 		}
 
-		// if a load file is given, it will override the blocksize and reqsize from the command line
+		// if a load file is given, it will override the blocksize from the command line
 		// it will also check if numreqs is specified, if not, it will set numreqs from the load file
 		if (tdp->td_seekhdr.seek_loadfile) {
-			xdd_set_bs_reqsize_numreqs_from_loadfile(tdp);
+			xdd_set_bs_numreqs_from_loadfile(tdp);
 		}
 					
 		// Calcualte the data transfer information - number of ops, bytes, starting offset, ...etc.

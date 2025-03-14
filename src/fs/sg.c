@@ -283,12 +283,12 @@ xdd_sg_set_reserved_size(target_data_t *tdp, int fd) {
 	int		status;
 
 
-	reserved_size = (tdp->td_block_size*tdp->td_reqsize);
+	reserved_size = tdp->td_block_size;
 	status = ioctl(fd, SG_SET_RESERVED_SIZE, &reserved_size);
 	if (status < 0) {
 		fprintf(xgp->errout,"%s: xdd_sg_set_reserved_size: SG_SET_RESERVED_SIZE error - request for %d bytes denied",
 			xgp->progname,
-			(tdp->td_block_size*tdp->td_reqsize));
+			tdp->td_block_size);
 	}
 } // End of xdd_sg_set_reserved_size()
 

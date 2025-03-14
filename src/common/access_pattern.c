@@ -132,7 +132,7 @@ xdd_init_seek_list(target_data_t *tdp) {
 	if ((tdp->td_throtp) && (tdp->td_throtp->throttle > 0.0)) {
 		if (tdp->td_throtp->throttle_type & XINT_THROTTLE_BW){
 			bytes_per_sec = tdp->td_throtp->throttle * MILLION;
-			bytes_per_request = (tdp->td_reqsize * tdp->td_block_size);
+			bytes_per_request = tdp->td_block_size;
 			seconds_per_op = bytes_per_request/bytes_per_sec;
 			nano_seconds_per_op = seconds_per_op * BILLION;
            	if (tdp->td_throtp->throttle_variance > 0.0) {
@@ -176,32 +176,30 @@ xdd_init_seek_list(target_data_t *tdp) {
 		if (tdp->td_rwratio >= 0.5) /* This has to be set correctly or the first op may not be correct */
 			previous_percent_op = -1.0;
 		else
-                        previous_percent_op = 0.0;
+			previous_percent_op = 0.0;
 		/* We start out by first filling in the sequential seek location */
 		for (op_index = 0; op_index < sp->seek_total_ops; op_index++) {   
 			/* generating a sequential seek */
-                        if (sp->seek_options & SO_SEEK_STAGGER) {
-				gap = ((sp->seek_range-tdp->td_reqsize) - (sp->seek_num_rw_ops*tdp->td_reqsize)) /
-                                      (sp->seek_num_rw_ops-1);
-				if (sp->seek_stride > tdp->td_reqsize)
-                                        gap = sp->seek_stride - tdp->td_reqsize;
-                        } else {
-                                        gap = 0; 
-                        }
+			if (sp->seek_options & SO_SEEK_STAGGER) {
+				gap = ((sp->seek_range-tdp->td_block_size) - (sp->seek_num_rw_ops*tdp->td_blocksize)) /
+					(sp->seek_num_rw_ops-1);
+				if (sp->seek_stride > tdp->td_block_size)
+					gap = sp->seek_stride - tdp->td_block_size;
+				} else {
+					gap = 0; 
+				}
                         
-                        if (sp->seek_interleave > 1)
-                                interleave_threadoffset = sp->seek_interleave*tdp->td_reqsize;
-                        else
-                                interleave_threadoffset = 0;
+				if (sp->seek_interleave > 1)
+					interleave_threadoffset = sp->seek_interleave*tdp->td_reqsize;
+				else
+					interleave_threadoffset = 0;
 				
-                        sp->seeks[rw_index].block_location = tdp->td_start_offset + interleave_threadoffset + 
-                                (rw_op_index * ((tdp->td_reqsize*sp->seek_interleave) + gap));
+				sp->seeks[rw_index].block_location = tdp->td_start_offset + interleave_threadoffset + 
+													(rw_op_index * ((tdp->td_reqsize*sp->seek_interleave) + gap));
 			/* end of generating a sequential seek */
 			
 			/* Now lets fill in the block sizes to transfer */
 			sp->seeks[rw_index].blocksize = tdp->td_block_size;
-			/* Now lets fill in the request sizes to transfer */
-			sp->seeks[rw_index].reqsize = tdp->td_reqsize;
 			/* Now lets fill in the appropriate operation */
 			/* The operation is specified either as "read" or "write" in which case
 			 * all operations for this target will be either read or write accordingly.
@@ -357,7 +355,7 @@ xdd_save_seek_list(target_data_t *tdp) {
 			(unsigned long long)shortest, 
 			(unsigned long long)average,
 			(long int)tdp->td_numreqs);
-		fprintf(tmp,"#Ordinal Location Blocksize Reqsize Operation Time1 Time2\n"); 
+		fprintf(tmp,"#Ordinal Location Blocksize Operation Time1 Time2\n"); 
 		for (i = 0; i < sp->seek_total_ops; i++) {
 			if (sp->seeks[i].operation == SO_OP_READ) 
 				opc = "r";
@@ -369,20 +367,18 @@ xdd_save_seek_list(target_data_t *tdp) {
 				opc = "u";
 			
 			if (tdp->td_seekhdr.seek_options & SO_SEEK_NONE) {
-				fprintf(tmp,"%010d %012llu %d %d %s %016llu %016llu\n",
+				fprintf(tmp,"%010d %012llu %d %s %016llu %016llu\n",
 					i,
 					(unsigned long long)sp->seeks[0].block_location, 
 					sp->seeks[0].blocksize, 
-					sp->seeks[0].reqsize, 
 					opc, 
 					(unsigned long long)(sp->seeks[i].time1),
 					(unsigned long long)(sp->seeks[i].time2));
 			} else {
-				fprintf(tmp,"%010d %012llu %d %d %s %016llu %016llu\n",
+				fprintf(tmp,"%010d %012llu %d %s %016llu %016llu\n",
 					i,
 					(unsigned long long)sp->seeks[i].block_location, 
 					sp->seeks[i].blocksize, 
-					sp->seeks[i].reqsize, 
 					opc, 
 					(unsigned long long)(sp->seeks[i].time1),
 					(unsigned long long)(sp->seeks[i].time2));
@@ -469,9 +465,7 @@ xdd_load_seek_list(target_data_t *tdp) {
 	int32_t 	ordinal; 	/* ordinal number of the seek */
 	uint64_t 	loc;  		/* location */
 	int32_t     blocksz;    /* Block Size */
-	int32_t 	reqsz; 		// Request Size
 	nclk_t		t1,t2; 		/* time1 and time2 */
-	int32_t 	reqsz_high; 	/* highest request size*/
 	char 		rw;  		/* read or write operation */
 	char 		*status; 	/* status of the fgets */
 	struct seekhdr	*sp;
@@ -489,7 +483,6 @@ xdd_load_seek_list(target_data_t *tdp) {
 	/* read in the load file one line at a time */
 	status = line;
 	i = 0;
-	reqsz_high = 0;
 	while (status != NULL && i < tdp->td_numreqs) {
 		status = fgets(line, sizeof(line), loadfp);
 		if (status == NULL ) continue;
@@ -499,14 +492,13 @@ xdd_load_seek_list(target_data_t *tdp) {
 		/* Check for comment line */
 		if (*tp == COMMENT) continue;
 		/* Must be a seek line */
-		if (sscanf(line,"%d %llu %d %d %c %llu %llu", 
+		if (sscanf(line,"%d %llu %d %c %llu %llu", 
 			&ordinal,
 			(unsigned long long *)(&loc),
 			&blocksz,
-			&reqsz,
 			&rw,
 			(unsigned long long *)(&t1),
-			(unsigned long long *)(&t2)) != 7) {
+			(unsigned long long *)(&t2)) != 6) {
 				fprintf(xgp->errout, "%s: Error: Cannot parse seek load file %s\n",
 						xgp->progname, sp->seek_loadfile);
 				return(-1);
@@ -518,13 +510,11 @@ xdd_load_seek_list(target_data_t *tdp) {
 			sp->seeks[i].operation = SO_OP_NOOP; /* NOOP */
 		else sp->seeks[i].operation = SO_OP_READ; /* READ */
 		sp->seeks[i].blocksize = blocksz;
-		sp->seeks[i].reqsize = reqsz;
 		sp->seeks[i].time1 = t1;
 		sp->seeks[i].time2 = t2;
-		if (reqsz > reqsz_high) reqsz_high = reqsz;
 		i++;
 	}
-	sp->seek_iosize = reqsz_high * tdp->td_block_size;
+	sp->seek_iosize = tdp->td_block_size;
 	/* close the load file */
 	fclose(loadfp);
 	return(0);
