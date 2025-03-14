@@ -19,8 +19,8 @@ source "${SCRIPTPATH}"/../common.sh
 initialize_test
 data_file="${XDDTEST_LOCAL_MOUNT}/${TESTNAME}"/test
 
-# ReqSize 4096, Bytes 1GiB, Targets 1, QueueDepth 4, Passes 4
-"${XDDTEST_XDD_EXE}" -op write -reqsize 4096 -mbytes 1024 -targets 1 "${data_file}" -qd 4 -createnewfiles -passes 4 -datapattern random
+# Bytes 1GiB, Targets 1, QueueDepth 4, Passes 4
+"${XDDTEST_XDD_EXE}" -op write -blocksize 4m -mbytes 1024 -targets 1 "${data_file}" -qd 4 -createnewfiles -passes 4 -datapattern random
 
 # Validate output
 test_passes=1

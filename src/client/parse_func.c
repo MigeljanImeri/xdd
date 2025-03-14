@@ -70,34 +70,121 @@ xdd_parse_arg_count_check(int32_t args, int32_t argc, char *option) {
 
 } // End of xdd_parse_arg_count_check()
 /*----------------------------------------------------------------------------*/
+// Convert a size of bytes into a string with a number and a trailing character,
+// indicating b bytes, k kilobytes, m megabytes, g gigabytes
+void
+xddfunc_convert_bytes_to_units(uint64_t number, char *output_buf, size_t output_length)
+{
+	size_t counter = 0;
+	uint64_t value = number;
+	// Static array of each suffix option
+	const char *suffix_options[] = {"b", "k", "m", "g", "t"};
+	// Get number of suffixes
+	const size_t suffix_count = sizeof(suffix_options) / sizeof(suffix_options[0]);
+	
+	// While value can be divided by 1024 and we haven't reached the end of the list
+	while (value >= 1024ULL && counter < (suffix_count - 1))
+	{
+		// Divide the number and traverse
+		value = value / 1024ULL;
+		counter++;
+	}
+
+	// Write compounded output to buffer
+	snprintf(output_buf, output_length, "%" PRIu64 "%s", value, suffix_options[counter]);
+    return;
+} // End of xddfunc_convert_bytes_to_units()
+/*----------------------------------------------------------------------------*/
+// Parses a string containing a size value with optional unit suffix and convert
+// it to bytes.
+uint64_t
+xddfunc_parse_size_with_units(const char *value, const char *type, int *error)
+{
+    char unit_suffix;
+    uint64_t size_in_bytes;
+    
+	int scan_ret = sscanf(value, "%" PRIu64 "%c", &size_in_bytes, &unit_suffix);
+	
+	// Only parsed size without a suffix
+	if (scan_ret == 1)
+	{
+		// Add suffix for parsing and continue
+		unit_suffix = 'b';
+	}
+
+	// Did not parse 2 args
+	else if (scan_ret != 2)
+	{
+		fprintf(xgp->errout, "%s: Unable to parse size for %s. Expected a number and a suffix of b, k, m, or g\n", 
+					xgp->progname, type);
+		*error = 1;
+		return 0;
+	}
+	
+	// Range issue
+	if (errno == ERANGE)
+	{
+		fprintf(xgp->errout, "%s: Value '%s' is out of range. %s must take a smaller input number followed by a unit of b, k, m, or g\n", 
+					xgp->progname, value, type);
+		*error = 1;
+		return 0;
+	}
+
+	switch(unit_suffix) {
+        case 'b': 
+        case 'B': 
+        case '\0': 
+            break;
+        case 'k': 
+        case 'K': 
+            size_in_bytes *= 1024ULL;
+            break;
+        case 'm': 
+        case 'M': 
+            size_in_bytes *= 1024ULL * 1024ULL;
+            break;
+        case 'g': 
+        case 'G': 
+            size_in_bytes *= 1024ULL * 1024ULL * 1024ULL;
+            break;
+		case 't': 
+        case 'T': 
+            size_in_bytes *= 1024ULL * 1024ULL * 1024ULL * 1024ULL;
+            break;
+        default: 
+            fprintf(xgp->errout, "%s: Unit '%c' is not valid. %s must be a number followed by a unit of b, k, m, or g\n", 
+					xgp->progname, unit_suffix, type);
+            *error = 1;
+			return 0;
+    }
+    
+    return size_in_bytes;
+} // End of xddfunc_parse_size_with_units()
+/*----------------------------------------------------------------------------*/
 int
 xddfunc_blocksize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 {
     int args,i;
     int target_number;
-	int32_t block_size;
+	uint64_t block_size;
     target_data_t *tdp;
-
-
+	int* parse_error = 0;
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	block_size = atoi(argv[args+1]);
-	if (block_size <= 0) {
-		fprintf(xgp->errout, "%s: blocksize of %d is not valid. blocksize must be a number greater than 0\n",
-			xgp->progname,block_size);
-		return(0);
-	}
+	block_size = xddfunc_parse_size_with_units(argv[args+1], "blocksize", parse_error);
+	if (parse_error) return (-1);
+
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_block_size = block_size;
 		if (tdp->td_block_size <= 0) {
-			fprintf(xgp->errout, "%s: blocksize of %d is not valid. blocksize must be a number greater than 0\n",
+			fprintf(xgp->errout, "%s: blocksize of %ld is not valid. blocksize must be a number greater than 0\n",
 			xgp->progname,
 			tdp->td_block_size);
 			return(0);
@@ -129,7 +216,8 @@ xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	int args, i;
 	int target_number;
 	target_data_t *tdp;
-	int64_t bytes;
+	uint64_t bytes;
+	int* parse_error = 0;
 
 
 	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
@@ -139,7 +227,10 @@ xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	bytes = atoll(argv[args+1]);
+	bytes = xddfunc_parse_size_with_units(argv[args+1], "bytes", parse_error);
+	if (parse_error) return (-1);
+
+	
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 		if (tdp == NULL)
@@ -1748,7 +1839,8 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     int args, i;
     int target_number;
     target_data_t *tdp;
-	int64_t kbytes;
+	uint64_t kbytes;
+	int* parse_error = 0;
 
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);
@@ -1756,7 +1848,14 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	kbytes = atoll(argv[args+1]);
+	kbytes = xddfunc_parse_size_with_units(argv[args+1], "kbytes", parse_error);
+	if (parse_error)
+	{
+		fprintf(stderr, "%s: Invalid kbytes size: %ld. This value must be greater than 0\n",
+				xgp->progname,
+				kbytes);
+		return (-1);
+	}
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 		if (tdp == NULL) return(-1);
@@ -2162,15 +2261,23 @@ xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     int args, i;
     int target_number;
     target_data_t *tdp;
-	int64_t mbytes;
+	uint64_t mbytes;
+	int* parse_error = 0;
 
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
+	mbytes = xddfunc_parse_size_with_units(argv[args+1], "passoffset", parse_error);
+	if (parse_error)
+	{
+		fprintf(stderr, "%s: Invalid mbytes size: %ld. This value must be greater than 0\n",
+				xgp->progname,
+				mbytes);
+		return (-1);
+	}
 
-	mbytes = atoll(argv[args+1]);
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 		if (tdp == NULL) return(-1);
@@ -2724,7 +2831,8 @@ xddfunc_passoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
     int args, i;
     int target_number;
     target_data_t *tdp;
-	int64_t pass_offset;
+	uint64_t pass_offset;
+	int* parse_error = 0;
 
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);
@@ -2732,7 +2840,8 @@ xddfunc_passoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	pass_offset = atoll(argv[args+1]);
+	pass_offset = xddfunc_parse_size_with_units(argv[args+1], "passoffset", parse_error);
+	if (parse_error) return (-1);
 
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
@@ -3156,48 +3265,7 @@ xddfunc_report_threshold(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t
         return(2);
 	}
 }
-/*----------------------------------------------------------------------------*/
-// Specify the I/O request size in blocks for either a single target or all targets
-// Arguments: -reqsize [target #] #
-int
-xddfunc_reqsize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
-{
-    int args, i;
-    int target_number;
-    target_data_t *tdp;
-	int32_t reqsize;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
-
-	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
-		return(0);
-
-	reqsize = atoi(argv[args+1]);
-	if (reqsize <= 0) {
-		fprintf(xgp->errout,"%s: reqsize of %d is not valid. reqsize must be a number greater than 0\n",xgp->progname,reqsize);
-		return(0);
-	}
-
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
-		if (tdp == NULL) return(-1);
-
-		tdp->td_reqsize = reqsize;
-        return(args+2);
-	} else { // Put this option into all Targets
-		if (flags & XDD_PARSE_PHASE2) {
-			tdp = planp->target_datap[0];
-			i = 0;
-			while (tdp) {
-				tdp->td_reqsize = reqsize;
-				i++;
-				tdp = planp->target_datap[i];
-			}
-		}
-        return(2);
-	}
-} // End of xddfunc_reqsize()
 /*----------------------------------------------------------------------------*/
 // Control restart operation options
 int
@@ -3495,6 +3563,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     int     args, args_index;
     int     target_number;
     target_data_t  *tdp;
+	int* parse_error = 0;
 
 	args_index = 1;
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
@@ -3632,7 +3701,13 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options |= SO_SEEK_STAGGER;
 			tdp->td_seekhdr.seek_pattern = "staggered";
-			tdp->td_seekhdr.seek_stride = atoi(argv[args_index+1]);
+			/* Default stride if not passed */
+			if (argv[args_index+1] == NULL) tdp->td_seekhdr.seek_stride = 1;
+			else 
+			{
+				tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride", parse_error);
+				if (parse_error) return (-1);
+			}
 		} else {  /* set option for all targets */
 			if (flags & XDD_PARSE_PHASE2) {
 				tdp = planp->target_datap[0];
@@ -3640,7 +3715,13 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 				while (tdp) {
 					tdp->td_seekhdr.seek_options |= SO_SEEK_STAGGER;
 					tdp->td_seekhdr.seek_pattern = "staggered";
-			                tdp->td_seekhdr.seek_stride = atoi(argv[args_index+1]);
+			        /* Default stride if not passed */
+					if (argv[args_index+1] == NULL) tdp->td_seekhdr.seek_stride = 1;
+					else 
+					{
+						tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride", parse_error);
+						if (parse_error) return (-1);
+					}
 					i++;
 					tdp = planp->target_datap[i];
 				}
@@ -3651,14 +3732,16 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
-			tdp->td_seekhdr.seek_interleave = atoi(argv[args_index+1]);
+			tdp->td_seekhdr.seek_interleave = xddfunc_parse_size_with_units(argv[args_index+1], "interleave", parse_error);
+			if (parse_error) return (-1);
 			tdp->td_seekhdr.seek_pattern = "interleaved";
 		} else {  /* set option for all targets */
 			if (flags & XDD_PARSE_PHASE2) {
 				tdp = planp->target_datap[0];
 				i = 0;
 				while (tdp) {
-					tdp->td_seekhdr.seek_interleave = atoi(argv[args_index+1]);
+					tdp->td_seekhdr.seek_interleave = xddfunc_parse_size_with_units(argv[args_index+1], "interleave", parse_error);
+					if (parse_error) return (-1);
 					tdp->td_seekhdr.seek_pattern = "interleaved";
 					i++;
 					tdp = planp->target_datap[i];
@@ -3689,13 +3772,15 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		if (target_number >= 0) {  /* set option for specific target */
 			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 			if (tdp == NULL) return(-1);
-			tdp->td_seekhdr.seek_range = atoll(argv[args_index+1]);
+			tdp->td_seekhdr.seek_range = xddfunc_parse_size_with_units(argv[args_index+1], "range", parse_error);
+			if (parse_error) return (-1);
 		} else {  /* set option for all targets */
 			if (flags & XDD_PARSE_PHASE2) {
 				tdp = planp->target_datap[0];
 				i = 0;
 				while (tdp) {
-					tdp->td_seekhdr.seek_range = atoll(argv[args_index+1]);
+					tdp->td_seekhdr.seek_range = xddfunc_parse_size_with_units(argv[args_index+1], "range", parse_error);
+					if (parse_error) return (-1);
 					i++;
 					tdp = planp->target_datap[i];
 				}
@@ -3959,8 +4044,9 @@ xddfunc_startoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 {
     int args, i;
     int target_number;
-	int64_t	start_offset;
+	uint64_t start_offset;
     target_data_t *tdp;
+	int* parse_error = 0;
 
 
 	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
@@ -3969,11 +4055,8 @@ xddfunc_startoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	start_offset = atoll(argv[args+1]);
-	if (start_offset < 0) {
-		fprintf(xgp->errout,"%s: start offset of %lld is not valid. start offset must be a number equal to or greater than 0\n",xgp->progname,(long long)start_offset);
-		return(0);
-	}
+	start_offset = xddfunc_parse_size_with_units(argv[args+1], "startoffset", parse_error);
+	if (parse_error) return (-1);
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 		if (tdp == NULL) return(-1);
@@ -4287,7 +4370,9 @@ xddfunc_targetdir(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 int
 xddfunc_targetoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 {
-	planp->target_offset = atoll(argv[1]);
+	int* parse_error = 0;
+	planp->target_offset = xddfunc_parse_size_with_units(argv[1], "targetoffset", parse_error);
+	if (parse_error) return (-1);
     return(2);
 }
 /*----------------------------------------------------------------------------*/

@@ -20,8 +20,7 @@
 /** A single seek entry */
 struct seek_entries {
 	int32_t operation; /**< read or write */
-	int32_t blocksize; /**< Size of data transfer in blocks */
-	int32_t reqsize; /**< Number of blocks in the request */
+	uint64_t blocksize; /**< Size of data transfer in blocks */
 	uint64_t block_location; /**< Starting location in blocks */
 	nclk_t time1;  /**< Relative time in nano seconds that this operation should start */
 	nclk_t time2;  /**< not yet implemented */
@@ -39,20 +38,20 @@ typedef struct seek_entries seek_t;
 
 /** The seek header contains all the information regarding seek locations */
 struct seekhdr {
-	uint64_t seek_options; /**< various seek option flags */
-	int64_t  seek_range; /**< range of seek locations */
-	int32_t  seek_seed; /**< seed used for generating random seek locations */
-	int32_t  seek_interleave; /**< interleave used for generating sequential seek locations */
-	int32_t  seek_stride;        /**< stride of each request...if > reqsize*/
-	uint32_t seek_iosize; /**< The largest I/O size in the list */
-	int32_t  seek_num_rw_ops;  /**< Number of read+write operations */
-	int32_t  seek_total_ops;   /**< Total number of ops in the seek list including verifies */
-	int32_t  seek_NumSeekHistBuckets;/**< Number of buckets for seek histogram */
-	int32_t  seek_NumDistHistBuckets;/**< Number of buckets for distance histogram */
-	char  *seek_savefile; /**< file to save seek locations into */
-	char  *seek_loadfile; /**< file from which to load seek locations from */
-	char  *seek_pattern; /**< The seek pattern used for this target */
-	seek_t  *seeks;  /**< the seek list */
+	uint64_t seek_options; 				/**< various seek option flags */
+	uint64_t  seek_range; 				/**< range of seek locations */
+	int32_t  seek_seed; 				/**< seed used for generating random seek locations */
+	uint64_t  seek_interleave; 			/**< interleave used for generating sequential seek locations */
+	uint64_t  seek_stride;        		/**< stride of each request... if > numreqs */
+	uint32_t seek_iosize; 				/**< The largest I/O size in the list */
+	int32_t  seek_num_rw_ops;  			/**< Number of read+write operations */
+	int32_t  seek_total_ops;   			/**< Total number of ops in the seek list including verifies */
+	int32_t  seek_NumSeekHistBuckets;	/**< Number of buckets for seek histogram */
+	int32_t  seek_NumDistHistBuckets;	/**< Number of buckets for distance histogram */
+	char  *seek_savefile; 				/**< file to save seek locations into */
+	char  *seek_loadfile; 				/**< file from which to load seek locations from */
+	char  *seek_pattern; 				/**< The seek pattern used for this target */
+	seek_t  *seeks;  					/**< the seek list */
 	char state[256];
 	char *oldstate;
 	int seek_initialized;

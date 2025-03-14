@@ -26,7 +26,7 @@ delay_time=3
 passes=3
 theoretical_seconds="$((delay_time * passes))"
 
-"${XDDTEST_XDD_EXE}" -target "${test_file}" -op write -passes "${passes}" -reqsize 1 -numreqs 1 -startdelay "${delay_time}" -hb elapsed -hb output "${test_dir}/data2" -hb lf
+"${XDDTEST_XDD_EXE}" -target "${test_file}" -op write -passes "${passes}" -blocksize 1k -numreqs 1 -startdelay "${delay_time}" -hb elapsed -hb output "${test_dir}/data2" -hb lf
 
 actual_seconds=$(wc -l < "${data_loc}")
 error="$((actual_seconds-theoretical_seconds))"

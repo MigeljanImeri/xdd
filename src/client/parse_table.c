@@ -32,7 +32,7 @@ xdd_func_t  xdd_func[] = {
     {"blocksize", "bs",
             xddfunc_blocksize,
             1,
-            "  -blocksize [target <target#>] <#bytes/block>\n",
+            "  -blocksize [target <target#>] <#bytes>\n",
             {"    Specifies the size of a single 'block'.\n",
             0,0,0,0},
 			0},
@@ -442,7 +442,7 @@ xdd_func_t  xdd_func[] = {
             xddfunc_pretruncate,
             1,
             "  -pretruncate [target <target#>] <#blocks>\n",
-            {"    Will truncate file to # blocksized-blocks before writing a file.\n",
+            {"    Will truncate file to #blocks before writing a file.\n",
             0,0,0,0},
 			0},
     {"processlock", "plock",
@@ -509,15 +509,6 @@ xdd_func_t  xdd_func[] = {
             {"    The report threshhold will report the byte location of the operation that exceeded the specified threshold time.\n",
             0,0,0,0},
 			0},
-    {"reqsize", "rs",
-            xddfunc_reqsize,
-            1,
-            "  -reqsize [target <target#>] <#blocks>\n",
-            {"    Specifies the number of 'blocks' per operation where the block size is defined by the '-blocksize' option\n",
-             "    If the request size is specified in the format '-reqsize target <targetnumber> <size>' \n",
-             "    then the speficied target is assigned the specified request size\n",
-             0,0},
-			0},
     {"restart", "rst",
             xddfunc_restart,
             1,
@@ -571,9 +562,9 @@ xdd_func_t  xdd_func[] = {
     -seek 'seekhist #buckets' will display a 'seek location' histogram using the specified number of 'buckets'\n\
     -seek 'sequential' will generate sequential seeks - this is the default \n",
              "    -seek 'random' will generate random seeks over the range specified in -range \n\
-    -seek 'range #' is the range of blocksized-blocks over which to operate\n\
-    -seek 'stagger' specifies a staggered sequential access over 'range', by #blocks stride if > reqsize\n\
-    -seek 'interleave #' specifies the number of blocksized blocks to interleave into the access pattern\n\
+    -seek 'range #' is the range of blocks over which to operate\n\
+    -seek 'stagger' specifies a staggered sequential access over 'range', by #blocks stride if > numreqs\n\
+    -seek 'interleave #' specifies the number of blocks to interleave into the access pattern\n\
     -seek 'seed #' specifies a seed to use when generating random numbers\n\
     -seek 'none' do not seek - retransfer the same block each time \n",
                 0,0,0},
@@ -628,7 +619,7 @@ xdd_func_t  xdd_func[] = {
             xddfunc_startoffset,
             1,
             "  -startoffset [target <target#>] #\n",
-            {"    Specifies the disk offset in 'blocksize'-byte blocks to begin the operation.\n",
+            {"    Specifies the disk offset in #blocks to begin the operation.\n",
             0,0,0,0},
 			0},
     {"starttime", "stime",

@@ -105,7 +105,6 @@ struct xdd_ts_header {
     uint32_t	tsh_magic;          /**< Magic number indicating the beginning of timestamp data */
     char		tsh_version[XDD_VERSION_BUFSZ];        /**< Version string for the timestamp data format */
     int32_t		tsh_target_thread_id; // My system target thread ID (like a process ID)
-    int32_t		tsh_reqsize; 	/**< size of these requests in 'blocksize'-byte blocks */
     int32_t 	tsh_blocksize; 	/**< size of each block in bytes */
     int64_t 	tsh_numents; 	/**< number of timestamp table entries */
     nclk_t		tsh_trigtime; 	/**< Time the time stamp started */

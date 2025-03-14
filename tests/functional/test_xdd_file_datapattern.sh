@@ -5,7 +5,7 @@
 # Validate the funtionality of -datapattern file/wholefile option by creating a file,
 # setting the datapattern from that file and then verifying the contents match.
 # Additionally, ensure that when using the wholefile option, XDD does not crash (segfault)
-# if the buffer file is smaller than the requested size (reqsize)
+# if the buffer file is smaller than the block size used by XDD (blocksize)
 #
 # Description - Verifies XDD's -datapattern wholefile functionality.
 #
@@ -27,23 +27,23 @@ output_file="${test_dir}/data2.dat"
 
 # Function to test XDD with file-based datapattern
 # Args:
-#   $1: blocksize to create the input file
+#   $1: dd blocksize to create the input file
 #   $2: count (number of blocks to write)
-#   $3: reqsize (size of each I/O request)
+#   $3: xdd blocksize (size of each I/O request)
 #   $4: numreqs (total number of I/O requests)
 #   $5: queuedepth (number of concurrent requests)
 test_xdd_file_datapattern() {
-    local bs=$1
+    local dd_bs=$1
     local count=$2
-    local reqsize=$3
+    local xdd_blocksize=$3
     local numreqs=$4
     local qd=$5
 
     # Create datapattern input file using dd
-    dd if=/dev/urandom of="${input_file}" bs="${bs}" count="${count}"
+    dd if=/dev/urandom of="${input_file}" bs="${dd_bs}" count="${count}"
 
     # Write out file using xdd with -datapattern file
-    "${XDDTEST_XDD_EXE}" -op write -reqsize "${reqsize}" -numreqs "${numreqs}" \
+    "${XDDTEST_XDD_EXE}" -op write -blocksize "${xdd_blocksize}" -numreqs "${numreqs}" \
         -datapattern wholefile "${input_file}" -targets 1 "${output_file}" \
         -looseordering -qd "${qd}" -passes 1
 
@@ -79,47 +79,47 @@ test_xdd_file_datapattern() {
 }
 
 #
-# Tests below test when blocksize is the same size as the request size
+# Tests below test when dd blocksize is the same size as the xdd blocksize size
 #
 # Verfies that XDD handles -datapattern wholefile correctly with
 # Using dd: bs=4k, count=2 to create a 8KB input file
-# Using XDD: reqsize=8 blocks, numreqs=1, qd=1 (one thread)
-test_xdd_file_datapattern 4k 2 8 1 1
+# Using XDD: blocksize=8k, numreqs=1, qd=1 (one thread)
+test_xdd_file_datapattern 4k 2 8k 1 1
 
 # Verifies that XDD handles -datapattern wholefile correctly with
 # Using dd: bs=4k, count=2 to create a 8KB input file
-# Using XDD: reqsize=4 blocks, numreqs=2m, qd=2 (two threads)
-test_xdd_file_datapattern 4k 2 4 2 2
+# Using XDD: blocksize=4k, numreqs=2, qd=2 (two threads)
+test_xdd_file_datapattern 4k 2 4k 2 2
 
 #
-# Tests below test when blocksize is smaller than request size
+# Tests below test when dd blocksize is smaller than xdd blocksize size
 #
-# Verifies that XDD handles cases where reqsize > blocksize
-# This test confirms that XDD doesn't encounter issues when the request size
+# Verifies that XDD handles cases where xdd blocksize > file blocksize
+# This test confirms that XDD doesn't encounter issues when the block size
 # is larger than the input file size. (#38)
 # Using dd: bs=6k, count=1 to create a 6KB input file.
-# Using XDD: reqsize=7 blocks, numreqs=1, qd=1
-test_xdd_file_datapattern 6k 1 7 1 1
+# Using XDD: blocksize=7k, numreqs=1, qd=1
+test_xdd_file_datapattern 6k 1 7k 1 1
 
-# Verifies correct behavior when reqsize is not a multiple of blocksize
+# Verifies correct behavior when xdd blocksize is not a multiple of file blocksize
 # This test uses two threads with loose ordering to check proper data
 # distribution across threads.
 # Using dd: bs=5k, count=2 to create a 10KB input file.
-# Using XDD: reqsize=7 blocks, numreqs=2, qd=2 (two threads).
-test_xdd_file_datapattern 5k 2 7 2 2
+# Using XDD: blocksize=7k, numreqs=2, qd=2 (two threads).
+test_xdd_file_datapattern 5k 2 7k 2 2
 
-# Verifies correct behavior when reqsize is a multiple of blocksize
+# Verifies correct behavior when xdd blocksize is a multiple of file blocksize
 # This test also uses two threads with loose ordering for overlapping I/O operations.
 # Using dd: bs=6k, count=4 to create a 24KB input file.
-# Using XDD: reqsize=8 blocks, numreqs=3, qd=2.
-test_xdd_file_datapattern 6k 4 8 3 2
+# Using XDD: blocksize=8k, numreqs=3, qd=2.
+test_xdd_file_datapattern 6k 4 8k 3 2
 
-# Verifies that XDD handles very large reqsize without segmentation faults
-# Specifically tests when reqsize is significantly larger than blocksize.
+# Verifies that XDD handles very large blocksize without segmentation faults
+# Specifically tests when xdd blocksize is significantly larger than file blocksize.
 # Using dd: bs=1k, count=1 to create a 1KB input file.
-# Using XDD: reqsize=256 blocks (1MB), numreqs=4, qd=3.
+# Using XDD: blocksize=256k (256k x 4 = 1MB), numreqs=4, qd=3.
 # This ensures XDD can handle writing large data even if the input file is small.
-test_xdd_file_datapattern 1k 1 256 4 3
+test_xdd_file_datapattern 1k 1 256k 4 3
 
 # Test passed
 finalize_test 0
