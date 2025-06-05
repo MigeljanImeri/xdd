@@ -586,22 +586,22 @@ xddfunc_datapattern(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 		} else {// Put this option into all Targets
 			if (flags & XDD_PARSE_PHASE2) {
 				tdp = planp->target_datap[0];
-				tdp->td_dpp->data_pattern_length = stat_buf.st_size;
-				i = 0;
 				dp_fd = open(argv[args+2], O_RDONLY);
 				if (dp_fd < 0) {
 					fprintf(xgp->errout, "%s: could not open %s\n", xgp->progname, argv[args+2]);
 					return(0);
 				}
-				if (strcmp(pattern_type, "file") == 0) {
-					tdp->td_dpp->data_pattern_options |= DP_FILE_PATTERN;
-				} else {//wholefile
-					tdp->td_dpp->data_pattern_options |= DP_WHOLEFILE_PATTERN;
-					if (!xdd_datapattern_wholefile_enough_ram(tdp, argv[args+2])) {
-						return(0);
-					}
-				}
+				i = 0;
 				while (tdp) {
+					if (strcmp(pattern_type, "file") == 0) {
+						tdp->td_dpp->data_pattern_options |= DP_FILE_PATTERN;
+					} else {//wholefile
+						tdp->td_dpp->data_pattern_options |= DP_WHOLEFILE_PATTERN;
+						if (!xdd_datapattern_wholefile_enough_ram(tdp, argv[args+2])) {
+							return(0);
+						}
+					}
+					tdp->td_dpp->data_pattern_length = stat_buf.st_size;
 					if (xdd_set_datapattern_from_file_descriptor(tdp, dp_fd, argv[args+2])) {
 						close(dp_fd);
 						return(0);
