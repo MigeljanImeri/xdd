@@ -18,7 +18,7 @@ initialize_test
 test_dir="${XDDTEST_LOCAL_MOUNT}/${TESTNAME}"
 
 # A super simple lockstep
-"${XDDTEST_XDD_EXE}" -targets 2 "${test_dir}/foo" "${test_dir}/foo" -op target 0 write -op target 1 read  -reqsize 1024 -numreqs 10 -lockstep  0 1 op 1 op 1 wait complete -verbose
+"${XDDTEST_XDD_EXE}" -targets 2 "${test_dir}/foo" "${test_dir}/foo" -op target 0 write -op target 1 read -blocksize 1m -numreqs 10 -lockstep  0 1 op 1 op 1 wait complete -verbose
 
 # Validate output
 correct_size=$((1024*1024*10))
