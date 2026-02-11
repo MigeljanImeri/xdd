@@ -22,14 +22,13 @@ log_file="$(get_log_file)"
 os="$(uname)"
 
 xdd_byte_cmd="-hb bytes -hb kbytes -hb mbytes -hb gbytes"
-req_size=2000
 num_reqs=2000
-block_size=1024
+block_size=2000k
 
 times_test=0
 
 # shellcheck disable=SC2086
-"${XDDTEST_XDD_EXE}" -target "${test_file}" -op write -reqsize "${req_size}" -numreqs "${num_reqs}" -blocksize "${block_size}" ${xdd_byte_cmd} -hb lf -hb output "${test_dir}/data2" 100&
+"${XDDTEST_XDD_EXE}" -target "${test_file}" -op write -numreqs "${num_reqs}" -blocksize "${block_size}" ${xdd_byte_cmd} -hb lf -hb output "${test_dir}/data2" 100&
 pid="$!"
 
 num_ele=0

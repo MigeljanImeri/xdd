@@ -33,7 +33,7 @@ while [ "${cs_time}" -gt 40 ]; do
     cs_time=$(date | cut -f 3 -d ':' | cut -f 1 -d ' ')
 done
 
-"${XDDTEST_XDD_EXE}" -target "${test_file}" -op write -reqsize 9999 -numreqs 9999 -runtime "${run_time}" -hb tod -hb output "${test_file2}"
+"${XDDTEST_XDD_EXE}" -target "${test_file}" -op write -blocksize 9999k -numreqs 9999 -runtime "${run_time}" -hb tod -hb output "${test_file2}"
 
 # gets displayed date from output file
 for ((j=1; j<run_time; j++)); do
