@@ -166,6 +166,7 @@ xdd_set_bs_numreqs_from_loadfile(target_data_t *tdp) {
 	size_t	length = 0;			/* length of the line */
 	int 	return_value = 0;
 	int 	block_size = 0;
+	char	block_size_buf[32];
 	int64_t numreqs = 0;
 	struct seekhdr	*sp;
 
@@ -213,12 +214,14 @@ xdd_set_bs_numreqs_from_loadfile(target_data_t *tdp) {
 		goto close_file_and_return;
 	}
 
-	if (sscanf(line, "%*d %*u %d %d", &block_size, &req_size) != 2) {
+	/* Edited - takes character buffer to parse with unit now, no req_Size */
+	if (sscanf(line, "%*d %*u %31s", block_size_buf) != 1) {
 		fprintf(xgp->errout, "%s: ERROR: Cannot parse block size and request size from the data line of %s\n",
 				xgp->progname, sp->seek_loadfile);
 		return_value = -1;
 		goto close_file_and_return;
 	}
+	block_size = xddfunc_parse_size_with_units(block_size_buf, "blocksize");
 
 	/* Replace the values from command line to what's in the file */
 	if (block_size > 0) {

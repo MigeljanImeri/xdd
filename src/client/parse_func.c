@@ -70,9 +70,61 @@ xdd_parse_arg_count_check(int32_t args, int32_t argc, char *option) {
 
 } // End of xdd_parse_arg_count_check()
 /*----------------------------------------------------------------------------*/
+// Convert a size of bytes into a string with a number and a trailing character,
+// indicating b bytes, k kilobytes, m megabytes, g gigabytes
+void
+xddfunc_convert_units_to_bytes(int64_t number, char *formatted)
+{
+	char formatted[64];
+	int32_t value = number;
+	char *suffix;
+	int counter = 0;
+
+	// Reduce size
+	while (1)
+	{
+		if (value / 1024LL < 1)
+		{
+			break;
+		}
+		value = value / 1024LL;
+		counter++;
+	}
+
+	// Set suffix based on number of 1024 divisions
+	switch(counter) 
+	{
+        case 0: 
+			suffix = "b";
+			break;
+        case 1: 
+			suffix = "k";
+			break;
+		case 2:
+			suffix = "m";
+			break;
+		case 3:
+			suffix = "g";
+			break;
+		case 4:
+			suffix = "t";
+			break;
+		default:
+			suffix = "";
+			break;
+    }
+
+	// Integer is now string
+	snprintf(formatted, sizeof(formatted), "%d", value);
+	// Combine value and suffix
+	strcat(formatted, suffix);
+    strcpy(output_size, formatted);
+    return;
+} // End of xddfunc_parse_size_with_units()
+/*----------------------------------------------------------------------------*/
 // Parses a string containing a size value with optional unit suffix and convert
 // it to bytes.
-static int64_t
+int64_t
 xddfunc_parse_size_with_units(const char *value, const char *type)
 {
     char *unit_suffix = NULL;
@@ -100,6 +152,10 @@ xddfunc_parse_size_with_units(const char *value, const char *type)
         case 'g': 
         case 'G': 
             size_in_bytes *= 1024LL * 1024LL * 1024LL;
+            break;
+		case 't': 
+        case 'T': 
+            size_in_bytes *= 1024LL * 1024LL * 1024LL * 1024LL;
             break;
         default: 
             fprintf(xgp->errout, "%s: Unit '%c' is not valid. %s must be a number followed by a unit of b, k, m, or g\n", 
@@ -1790,11 +1846,11 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	kbytes = xddfunc_parse_size_with_units(argv[args+1], "kbytes");
+	kbytes = atoll(argv[args+1]);
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 		if (tdp == NULL) return(-1);
-		tdp->td_bytes = kbytes;
+		tdp->td_bytes = kbytes * 1024;
 		tdp->td_numreqs = 0;
         return(args+2);
 	} else { // Put this option into all Targets
@@ -1802,7 +1858,7 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 				tdp = planp->target_datap[0];
 				i = 0;
 				while (tdp) {
-					tdp->td_bytes = kbytes;
+					tdp->td_bytes = kbytes * 1024;
 					tdp->td_numreqs = 0;
 					i++;
 					tdp = planp->target_datap[i];
@@ -2204,12 +2260,12 @@ xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	mbytes = xddfunc_parse_size_with_units(argv[args+1], "mbytes");
+	mbytes = atoll(argv[args+1]);
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 		if (tdp == NULL) return(-1);
 
-		tdp->td_bytes = mbytes;
+		tdp->td_bytes = mbytes * 1024 * 1024;
 		tdp->td_numreqs = 0;
         return(args+2);
 	} else { // Put this option into all Targets
@@ -2217,7 +2273,7 @@ xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 				tdp = planp->target_datap[0];
 				i = 0;
 				while (tdp) {
-					tdp->td_bytes = mbytes;
+					tdp->td_bytes = mbytes * 1024 * 1024;
 					tdp->td_numreqs = 0;
 					i++;
 					tdp = planp->target_datap[i];
@@ -3625,7 +3681,9 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options |= SO_SEEK_STAGGER;
 			tdp->td_seekhdr.seek_pattern = "staggered";
-			tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride");
+			/* Default stride if not passed */
+			if (argv[args_index+1] == NULL) tdp->td_seekhdr.seek_stride = 1;
+			else tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride");
 		} else {  /* set option for all targets */
 			if (flags & XDD_PARSE_PHASE2) {
 				tdp = planp->target_datap[0];
@@ -3633,7 +3691,9 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 				while (tdp) {
 					tdp->td_seekhdr.seek_options |= SO_SEEK_STAGGER;
 					tdp->td_seekhdr.seek_pattern = "staggered";
-			                tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride");
+			        /* Default stride if not passed */
+					if (argv[args_index+1] == NULL) tdp->td_seekhdr.seek_stride = 1;
+					else tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride");
 					i++;
 					tdp = planp->target_datap[i];
 				}

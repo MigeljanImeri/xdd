@@ -141,6 +141,8 @@ int xddfunc_xni(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_ibdevice(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_invalid_option(int32_t argc, char *argv[], uint32_t flags);
 void xddfunc_currently_undefined_option(char *sp);
+int64_t xddfunc_parse_size_with_units(const char *value, const char *type);
+void xddfunc_convert_units_to_bytes(int64_t number, char *formatted);
 
 /*
  * Local variables:
