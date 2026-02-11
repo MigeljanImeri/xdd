@@ -181,7 +181,7 @@ xdd_init_seek_list(target_data_t *tdp) {
 		for (op_index = 0; op_index < sp->seek_total_ops; op_index++) {   
 			/* generating a sequential seek */
 			if (sp->seek_options & SO_SEEK_STAGGER) {
-				gap = ((sp->seek_range-tdp->td_block_size) - (sp->seek_num_rw_ops*tdp->td_blocksize)) /
+				gap = ((sp->seek_range-tdp->td_block_size) - (sp->seek_num_rw_ops*tdp->td_block_size)) /
 					(sp->seek_num_rw_ops-1);
 				if (sp->seek_stride > tdp->td_block_size)
 					gap = sp->seek_stride - tdp->td_block_size;
