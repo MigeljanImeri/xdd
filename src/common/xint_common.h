@@ -55,6 +55,7 @@
 #define DEFAULT_TARGET NULL
 #define DEFAULT_TIMESTAMP "ts"
 #define DEFAULT_BLOCKSIZE 4096 /* 4k */
+#define DEFAULT_BLOCKSZ_BUFFER_SIZE 64 /* Buffer size for blocksize string */
 #define DEFAULT_REQINCR 32
 #define DEFAULT_FLUSHWRITE 0
 #define DEFAULT_PASSES 1

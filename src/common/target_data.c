@@ -15,6 +15,7 @@
  * with respect to the Target_Data and the Target_Data substructure.
  */
 #include "xint.h"
+#include "parse.h"
 
 
 /*----------------------------------------------------------------------------*/
@@ -169,6 +170,7 @@ xdd_set_bs_numreqs_from_loadfile(target_data_t *tdp) {
 	char	block_size_buf[DEFAULT_BLOCKSZ_BUFFER_SIZE];
 	int64_t numreqs = 0;
 	struct seekhdr	*sp;
+	int parse_error = 0;
 
 	sp = &tdp->td_seekhdr;
 	/* Open the load file */
@@ -216,11 +218,13 @@ xdd_set_bs_numreqs_from_loadfile(target_data_t *tdp) {
 
 	/* Edited - takes character buffer to parse with unit now, no req_Size */
 	if (sscanf(line, "%*d %*u %31s", block_size_buf) != 1) {
-		fprintf(xgp->errout, "%s: ERROR: Cannot parse block size from the data line of %s\n",
+		fprintf(xgp->errout, "%s: ERROR: Cannot parse block size and request size from the data line of %s\n",
 				xgp->progname, sp->seek_loadfile);
 		return_value = -1;
 		goto close_file_and_return;
 	}
+	block_size = xddfunc_parse_size_with_units(block_size_buf, "blocksize", &parse_error);
+	if (parse_error) goto close_file_and_return;
 
 	/* Replace the values from command line to what's in the file */
 	tdp->td_block_size = block_size;
@@ -251,7 +255,7 @@ xdd_calculate_xfer_info(target_data_t *tdp) {
 	/* Now lets get down to business... */
 	tdp->td_xfer_size = tdp->td_block_size;
 	if (tdp->td_xfer_size == 0) {
-		fprintf(xgp->errout,"%s: xdd_calculate_xfer_info: ALERT! iothread for target %d has an iosize of 0, blocksize of %d\n",
+		fprintf(xgp->errout,"%s: xdd_calculate_xfer_info: ALERT! iothread for target %d has an iosize of 0, blocksize of %ld\n",
 			xgp->progname, tdp->td_target_number, tdp->td_block_size);
 		fflush(xgp->errout);
 		tdp->td_target_bytes_to_xfer_per_pass = 0;

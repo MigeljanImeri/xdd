@@ -15,6 +15,7 @@
  * which has the implied access pattern.
  */
 #include "xint.h"
+#include "parse.h"
 #include <stdlib.h>
 
 /*----------------------------------------------------------------------------*/
@@ -320,6 +321,7 @@ xdd_save_seek_list(target_data_t *tdp) {
 	FILE *tmp; /* FILE pointer to the file to save the seek list into */
 	char errormessage[1024]; /* error message buffer */
 	char tmpname[512]; /* enumerated name of the file to save the seeks into */
+	char formatted_blocksize[DEFAULT_BLOCKSZ_BUFFER_SIZE]; /* includes character suffix to denote size */
 	seekhdr_t *sp; 
         xdd_plan_t *planp;
 
@@ -373,18 +375,22 @@ xdd_save_seek_list(target_data_t *tdp) {
 				opc = "u";
 			
 			if (tdp->td_seekhdr.seek_options & SO_SEEK_NONE) {
-				fprintf(tmp,"%010d %012llu %d %s %016llu %016llu\n",
+				/* Format blocksize before saving */
+				xddfunc_convert_bytes_to_units(sp->seeks[0].blocksize, formatted_blocksize, DEFAULT_BLOCKSZ_BUFFER_SIZE);
+				fprintf(tmp,"%010d %012llu %s %s %016llu %016llu\n",
 					i,
 					(unsigned long long)sp->seeks[0].block_location, 
-					sp->seeks[0].blocksize, 
+					formatted_blocksize, 
 					opc, 
 					(unsigned long long)(sp->seeks[i].time1),
 					(unsigned long long)(sp->seeks[i].time2));
 			} else {
-				fprintf(tmp,"%010d %012llu %d %s %016llu %016llu\n",
+				/* Format blocksize before saving */
+				xddfunc_convert_bytes_to_units(sp->seeks[i].blocksize, formatted_blocksize, (size_t)sizeof(formatted_blocksize));
+				fprintf(tmp,"%010d %012llu %s %s %016llu %016llu\n",
 					i,
 					(unsigned long long)sp->seeks[i].block_location, 
-					sp->seeks[i].blocksize, 
+					formatted_blocksize, 
 					opc, 
 					(unsigned long long)(sp->seeks[i].time1),
 					(unsigned long long)(sp->seeks[i].time2));
@@ -499,10 +505,10 @@ xdd_load_seek_list(target_data_t *tdp) {
 		/* Check for comment line */
 		if (*tp == COMMENT) continue;
 		/* Must be a seek line */
-		if (sscanf(line,"%d %llu %d %c %llu %llu", 
+		if (sscanf(line,"%d %llu %s %c %llu %llu", 
 			&ordinal,
 			(unsigned long long *)(&loc),
-			&blocksz,
+			blocksz_buf,
 			&rw,
 			(unsigned long long *)(&t1),
 			(unsigned long long *)(&t2)) != 6) {
@@ -511,6 +517,8 @@ xdd_load_seek_list(target_data_t *tdp) {
 				return(-1);
 		}
 		sp->seeks[i].block_location = loc;
+		blocksz = xddfunc_parse_size_with_units(blocksz_buf, "blocksize", &parse_error);
+		if (parse_error) return(-1);
 		if ((rw == 'w') || (rw == 'W')) 
 			sp->seeks[i].operation = SO_OP_WRITE;
 		else if ((rw == 'n') || (rw == 'N')) 
