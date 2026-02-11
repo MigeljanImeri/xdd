@@ -183,7 +183,6 @@ xdd_target_info(FILE *out, target_data_t *tdp) {
 	fprintf(out,"\t\tPass seek randomization, %s", (tdp->td_target_options & TO_PASS_RANDOMIZE)?"enabled\n":"disabled\n");
 	fprintf(out,"\t\tFile write synchronization, %s", (tdp->td_target_options & TO_SYNCWRITE)?"enabled\n":"disabled\n");
 	fprintf(out,"\t\tBlocksize in bytes, %d\n", tdp->td_block_size);
-	fprintf(out,"\t\tRequest size, %d, %d-byte blocks, %d, bytes\n",tdp->td_reqsize,tdp->td_block_size,tdp->td_reqsize*tdp->td_block_size);
 	fprintf(out,"\t\tNumber of Operations, %lld\n", (long long int)tdp->td_target_ops);
 
 	// Total Data Transfer for this TARGET
@@ -204,7 +203,7 @@ xdd_target_info(FILE *out, target_data_t *tdp) {
 		xdd_display_kmgt(out, tdp->td_seekhdr.seek_range*tdp->td_block_size, tdp->td_block_size);
 	}
 	fprintf(out, "\t\tSeek pattern, %s\n", tdp->td_seekhdr.seek_pattern);
-	if (tdp->td_seekhdr.seek_stride > tdp->td_reqsize)
+	if (tdp->td_seekhdr.seek_stride > tdp->td_target_ops)
 		fprintf(out, "\t\tSeek Stride, %d, %d-byte blocks, %d, bytes\n",tdp->td_seekhdr.seek_stride,tdp->td_block_size,tdp->td_seekhdr.seek_stride*tdp->td_block_size);
 	fprintf(out, "\t\tFlushwrite interval, %lld\n", (long long)tdp->td_flushwrite);
 	fprintf(out,"\t\tI/O memory buffer is %s\n",

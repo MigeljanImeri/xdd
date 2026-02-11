@@ -152,7 +152,6 @@ xdd_show_target_data(target_data_t *tdp) {
     fprintf(stderr,"xdd_show_target_data: int64_t                 td_numreqs=%lld\n",(long long int)tdp->td_numreqs);                  // Number of requests to perform per pass per qthread
     fprintf(stderr,"xdd_show_target_data: double                  td_rwratio=%f\n",tdp->td_rwratio);                  // read/write ratios 
     fprintf(stderr,"xdd_show_target_data: nclk_t                  td_report_threshold=%lld\n",(unsigned long long int)tdp->td_report_threshold);        // reporting threshold for long operations 
-    fprintf(stderr,"xdd_show_target_data: int32_t                 td_reqsize=%d\n",tdp->td_reqsize);                  // number of *blocksize* byte blocks per operation for each target 
     fprintf(stderr,"xdd_show_target_data: int32_t                 td_retry_count=%d\n",tdp->td_retry_count);              // number of retries to issue on an error 
     fprintf(stderr,"xdd_show_target_data: double                  td_time_limit=%f\n",tdp->td_time_limit);                // Time of a single pass in seconds
     fprintf(stderr,"xdd_show_target_data: nclk_t                  td_time_limit_ticks=%lld\n",(unsigned long long int)tdp->td_time_limit_ticks);        // Time of a single pass in high-res clock ticks
@@ -581,7 +580,6 @@ xdd_show_ts_header(xdd_ts_header_t *ts_hdrp, int target_number) {
     fprintf(stderr,"\txdd_show_ts_header: uint32_t   tsh_magic=0x%08ux\n",ts_hdrp->tsh_magic);          /**< Magic number indicating the beginning of timestamp data */
     fprintf(stderr,"\txdd_show_ts_header: char       tsh_version[XDD_VERSION_BUFSZ]=%s\n",ts_hdrp->tsh_version); /**< Version string for the timestamp data format */
     fprintf(stderr,"\txdd_show_ts_header: int32_t    tsh_target_thread_id=%d\n",ts_hdrp->tsh_target_thread_id); // My system target thread ID (like a process ID)
-    fprintf(stderr,"\txdd_show_ts_header: int32_t    tsh_reqsize=%d\n",ts_hdrp->tsh_reqsize); 	/**< size of these requests in 'blocksize'-byte blocks */
     fprintf(stderr,"\txdd_show_ts_header: int32_t    tsh_blocksize=%d\n",ts_hdrp->tsh_blocksize); 	/**< size of each block in bytes */
     fprintf(stderr,"\txdd_show_ts_header: int64_t    tsh_numents=%lld\n",(long long int)ts_hdrp->tsh_numents); 	/**< number of timestamp table entries */
     fprintf(stderr,"\txdd_show_ts_header: nclk_t     tsh_trigtime=%lld\n",(long long int)ts_hdrp->tsh_trigtime); 	/**< Time the time stamp started */
@@ -623,7 +621,6 @@ xdd_show_results_data(results_t *rp, char *dumptype, xdd_plan_t *planp) {
 	fprintf(stderr,"	xfer_size_blocks = %12.3f\n",rp->xfer_size_blocks);		// Transfer size in blocks 
 	fprintf(stderr,"	xfer_size_kbytes = %12.3f\n",rp->xfer_size_kbytes);		// Transfer size in Kbytes 
 	fprintf(stderr,"	xfer_size_mbytes = %12.3f\n",rp->xfer_size_mbytes);		// Transfer size in Mbytes 
-	fprintf(stderr,"	reqsize = %d\n",rp->reqsize); 			// RequestSize from the target_data 
 	fprintf(stderr,"	pass_number = %d\n",rp->pass_number); 	// Pass number of this set of results 
 	fprintf(stderr,"	*optype = '%s'\n",rp->optype);			// Operation type - read, write, or mixed
 

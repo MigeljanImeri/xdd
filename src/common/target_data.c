@@ -15,6 +15,7 @@
  * with respect to the Target_Data and the Target_Data substructure.
  */
 #include "xint.h"
+#include "parse.h"
 
 
 /*----------------------------------------------------------------------------*/
@@ -208,7 +209,7 @@ xdd_set_bs_numreqs_from_loadfile(target_data_t *tdp) {
 		goto close_file_and_return;
 	}
 
-	/* Read the third line to extract block size and request size */
+	/* Read the third line to extract block size */
 	if (xdd_parse_header(&line, &length, loadfp) == -1) {
 		return_value = -1;
 		goto close_file_and_return;
@@ -216,7 +217,7 @@ xdd_set_bs_numreqs_from_loadfile(target_data_t *tdp) {
 
 	/* Edited - takes character buffer to parse with unit now, no req_Size */
 	if (sscanf(line, "%*d %*u %31s", block_size_buf) != 1) {
-		fprintf(xgp->errout, "%s: ERROR: Cannot parse block size and request size from the data line of %s\n",
+		fprintf(xgp->errout, "%s: ERROR: Cannot parse block size from the data line of %s\n",
 				xgp->progname, sp->seek_loadfile);
 		return_value = -1;
 		goto close_file_and_return;

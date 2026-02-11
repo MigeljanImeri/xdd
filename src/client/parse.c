@@ -303,7 +303,7 @@ xdd_process_paramfile(xdd_plan_t *planp, char *fnp) {
  *
  * The calling routine passes in a pointer to the first argument of the option.
  * For example, if the option is
- *       -reqsize  target   3        1024
+ *       -blocksize  target   3        1024
  * then  ^argv[0]  ^argv[1] ^argv[2] ^argv[3]
  *
  * The calling routine also passes a pointer to the place to return the target
@@ -317,11 +317,11 @@ xdd_process_paramfile(xdd_plan_t *planp, char *fnp) {
  *
  * If the "previous" or "prev" or "p" suboption is specified then return
  * the number of the last target specified by the "-targets 1" option.
- * For example, "-reqsize prev 1024" will set "target_number" to the
+ * For example, "-blocksize prev 1024" will set "target_number" to the
  * current number of targets that have been specified minus 1 and return 1.
  *
  * If there is no "target" or "previous" suboption then return a -1 as
- * the target number. For example, if the option "-reqsize 1024" is specified
+ * the target number. For example, if the option "-blocksize 1024" is specified
  * then "target_number" is set to -1 and a value of 0 will be returned.
  *
  */

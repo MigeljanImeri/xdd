@@ -21,7 +21,6 @@
 struct seek_entries {
 	int32_t operation; /**< read or write */
 	int32_t blocksize; /**< Size of data transfer in blocks */
-	int32_t reqsize; /**< Number of blocks in the request */
 	uint64_t block_location; /**< Starting location in blocks */
 	nclk_t time1;  /**< Relative time in nano seconds that this operation should start */
 	nclk_t time2;  /**< not yet implemented */
@@ -43,7 +42,7 @@ struct seekhdr {
 	int64_t  seek_range; /**< range of seek locations */
 	int32_t  seek_seed; /**< seed used for generating random seek locations */
 	int32_t  seek_interleave; /**< interleave used for generating sequential seek locations */
-	int32_t  seek_stride;        /**< stride of each request...if > reqsize*/
+	int32_t  seek_stride;        /**< stride of each request...if > numreqs*/
 	uint32_t seek_iosize; /**< The largest I/O size in the list */
 	int32_t  seek_num_rw_ops;  /**< Number of read+write operations */
 	int32_t  seek_total_ops;   /**< Total number of ops in the seek list including verifies */

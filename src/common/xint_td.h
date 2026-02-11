@@ -111,7 +111,6 @@ struct xint_target_data {
 	int64_t				td_numreqs;  				// Number of requests to perform per pass per qthread
 	double				td_rwratio;  				// read/write ratios
 	nclk_t				td_report_threshold;		// reporting threshold for long operations
-	int32_t				td_reqsize;  				// number of *blocksize* byte blocks per operation for each target
 	int32_t				td_retry_count;  			// number of retries to issue on an error
 	double				td_time_limit;				// Time of a single pass in seconds
 	nclk_t				td_time_limit_ticks;		// Time of a single pass in high-res clock ticks
