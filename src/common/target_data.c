@@ -165,7 +165,8 @@ xdd_set_bs_numreqs_from_loadfile(target_data_t *tdp) {
 	char	*line = NULL;		/* one line of characters */
 	size_t	length = 0;			/* length of the line */
 	int 	return_value = 0;
-	int 	block_size = 0;
+	uint64_t 	block_size = 0;
+	char	block_size_buf[DEFAULT_BLOCKSZ_BUFFER_SIZE];
 	int64_t numreqs = 0;
 	struct seekhdr	*sp;
 
@@ -207,23 +208,22 @@ xdd_set_bs_numreqs_from_loadfile(target_data_t *tdp) {
 		goto close_file_and_return;
 	}
 
-	/* Read the third line to extract block size and request size */
+	/* Read the third line to extract block size */
 	if (xdd_parse_header(&line, &length, loadfp) == -1) {
 		return_value = -1;
 		goto close_file_and_return;
 	}
 
-	if (sscanf(line, "%*d %*u %d %d", &block_size, &req_size) != 2) {
-		fprintf(xgp->errout, "%s: ERROR: Cannot parse block size and request size from the data line of %s\n",
+	/* Edited - takes character buffer to parse with unit now, no req_Size */
+	if (sscanf(line, "%*d %*u %31s", block_size_buf) != 1) {
+		fprintf(xgp->errout, "%s: ERROR: Cannot parse block size from the data line of %s\n",
 				xgp->progname, sp->seek_loadfile);
 		return_value = -1;
 		goto close_file_and_return;
 	}
 
 	/* Replace the values from command line to what's in the file */
-	if (block_size > 0) {
-		tdp->td_block_size = block_size;
-	}
+	tdp->td_block_size = block_size;
 
 	free(line);
 	/* close the load file */

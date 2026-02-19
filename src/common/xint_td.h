@@ -98,11 +98,11 @@ struct xint_target_data {
     pthread_cond_t 		td_this_wthread_is_available_condition;
 
 	// command line option values
-	int64_t				td_start_offset; 			// starting block offset value
-	int64_t				td_pass_offset; 			// number of blocks to add to seek locations between passes
+	uint64_t			td_start_offset; 			// starting block offset value
+	uint64_t			td_pass_offset; 			// number of blocks to add to seek locations between passes
 	int64_t				td_flushwrite;  			// number of write operations to perform between flushes
 	int64_t				td_flushwrite_current_count;  // Running number of write operations - used to trigger a flush (sync) operation
-	int64_t				td_bytes;   				// number of bytes to process overall
+	uint64_t				td_bytes;   				// number of bytes to process overall
 #if HAVE_CPU_SET_T
 #define NUMA_NODE_LIST_LEN 100
 	cpu_set_t			cpumask;                    // NUMA domain CPU mask used for numactl
@@ -111,7 +111,6 @@ struct xint_target_data {
 	int64_t				td_numreqs;  				// Number of requests to perform per pass per qthread
 	double				td_rwratio;  				// read/write ratios
 	nclk_t				td_report_threshold;		// reporting threshold for long operations
-	int32_t				td_reqsize;  				// number of *blocksize* byte blocks per operation for each target
 	int32_t				td_retry_count;  			// number of retries to issue on an error
 	double				td_time_limit;				// Time of a single pass in seconds
 	nclk_t				td_time_limit_ticks;		// Time of a single pass in high-res clock ticks
@@ -123,7 +122,7 @@ struct xint_target_data {
 	double				td_start_delay; 			// number of seconds to delay the start  of this operation
 	nclk_t				td_start_delay_psec;		// number of nanoseconds to delay the start  of this operation
 	char				td_random_init_state[256]; 	// Random number generator state initalizer array
-	int32_t				td_block_size;  			// Size of a block in bytes for this target
+	uint64_t			td_block_size;  			// Size of a block in bytes for this target
 	int32_t				td_queue_depth; 			// Command queue depth for each target
 	int64_t				td_preallocate; 			// File preallocation value
 	int64_t				td_pretruncate; 			// File pretruncation value

@@ -163,7 +163,8 @@ xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	int args, i;
 	int target_number;
 	target_data_t *tdp;
-	int64_t bytes;
+	uint64_t bytes;
+	int* parse_error = 0;
 
 
 	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
@@ -1790,7 +1791,13 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	kbytes = xddfunc_parse_size_with_units(argv[args+1], "kbytes");
+	if (sscanf(argv[args+1], "%ld", &kbytes) != 1)
+	{
+		fprintf(stderr, "%s: Invalid kbytes size: %ld. This value must be greater than 0\n",
+				xgp->progname,
+				kbytes);
+		return (-1);
+	}
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 		if (tdp == NULL) return(-1);
@@ -2204,7 +2211,14 @@ xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	mbytes = xddfunc_parse_size_with_units(argv[args+1], "mbytes");
+	if (sscanf(argv[args+1], "%ld", &mbytes) != 1)
+	{
+		fprintf(stderr, "%s: Invalid mbytes size: %ld. This value must be greater than 0\n",
+				xgp->progname,
+				mbytes);
+		return (-1);
+	}
+
 	if (target_number >= 0) { /* Set this option value for a specific target */
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
 		if (tdp == NULL) return(-1);
@@ -2758,7 +2772,8 @@ xddfunc_passoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
     int args, i;
     int target_number;
     target_data_t *tdp;
-	int64_t pass_offset;
+	uint64_t pass_offset;
+	int* parse_error = 0;
 
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);

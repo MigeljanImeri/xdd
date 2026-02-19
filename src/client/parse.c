@@ -303,8 +303,8 @@ xdd_process_paramfile(xdd_plan_t *planp, char *fnp) {
  *
  * The calling routine passes in a pointer to the first argument of the option.
  * For example, if the option is
- *       -reqsize  target   3        1024
- * then  ^argv[0]  ^argv[1] ^argv[2] ^argv[3]
+ *       -blocksize  target   3        1024
+ * then  ^argv[0]    ^argv[1] ^argv[2] ^argv[3]
  *
  * The calling routine also passes a pointer to the place to return the target
  * number. This routine will set the target number to the correct value and
