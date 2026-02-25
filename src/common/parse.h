@@ -39,7 +39,7 @@ typedef struct xdd_func xdd_func_t;
 
 // Prototypes required by the parse_table() compilation
 int xddfunc_blocksize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
-int xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
+int xddfunc_size(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_combinedout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_congestion(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_cookie(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
@@ -109,6 +109,7 @@ int xddfunc_setup(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 int xddfunc_sgio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_sharedmemory(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_singleproc(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
+int xddfunc_size(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_startdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_startoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
 int xddfunc_starttime(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags);
