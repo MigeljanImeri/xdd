@@ -15,6 +15,7 @@
  * which has the implied access pattern.
  */
 #include "xint.h"
+#include "parse.h"
 #include <stdlib.h>
 
 /*----------------------------------------------------------------------------*/
@@ -62,7 +63,7 @@ xdd_get_random_block_location(target_data_t *tdp) {
         uint64_t range_limit;
 
         sp = &tdp->td_seekhdr;
-        range_limit = (sp->seek_range * tdp->td_reqsize) + (tdp->td_start_offset * tdp->td_reqsize);
+        range_limit = sp->seek_range + tdp->td_start_offset;
 
         do {
                 rand_val = xdd_init_seekhdr_init_get_random_float(sp);
@@ -81,7 +82,8 @@ xdd_get_random_block_location(target_data_t *tdp) {
  * The seek list is either loaded from a specified file or is generated
  * by this routine. 
  * Each entry in the seek list contains the seek location, the size of the
- * data transfer (currently reqsize), and the operation to perform.
+ * data transfer (currently an offset multiplied by blocksize), 
+ * and the operation to perform.
  * The seek entries are first loaded with their locations and a second
  * pass assigns operations (read or write) to the locations as
  * necessary. 
@@ -181,21 +183,26 @@ xdd_init_seek_list(target_data_t *tdp) {
 		for (op_index = 0; op_index < sp->seek_total_ops; op_index++) {   
 			/* generating a sequential seek */
 			if (sp->seek_options & SO_SEEK_STAGGER) {
-				gap = ((sp->seek_range-tdp->td_block_size) - (sp->seek_num_rw_ops*tdp->td_blocksize)) /
+				/* Calculate space between each operation within the range */
+				gap = (sp->seek_range - (sp->seek_num_rw_ops + 1)) /
 					(sp->seek_num_rw_ops-1);
-				if (sp->seek_stride > tdp->td_block_size)
-					gap = sp->seek_stride - tdp->td_block_size;
-				} else {
-					gap = 0; 
-				}
+				// Casting for explicit comparison, stride always positive so this does not affect logics
+				if ((uint64_t)sp->seek_stride > tdp->td_target_ops)
+					/* Reflects usage statement */
+					gap = sp->seek_stride;
+			}
+			else 
+			{
+				gap = 0; 
+			}
                         
-				if (sp->seek_interleave > 1)
-					interleave_threadoffset = sp->seek_interleave*tdp->td_reqsize;
-				else
-					interleave_threadoffset = 0;
-				
-				sp->seeks[rw_index].block_location = tdp->td_start_offset + interleave_threadoffset + 
-													(rw_op_index * ((tdp->td_reqsize*sp->seek_interleave) + gap));
+			if (sp->seek_interleave > 1)
+				interleave_threadoffset = sp->seek_interleave * tdp->td_target_ops;
+			else
+				interleave_threadoffset = 0;
+			
+			sp->seeks[rw_index].block_location = tdp->td_start_offset + interleave_threadoffset + 
+												(rw_op_index * (sp->seek_interleave + gap));
 			/* end of generating a sequential seek */
 			
 			/* Now lets fill in the block sizes to transfer */
@@ -314,6 +321,7 @@ xdd_save_seek_list(target_data_t *tdp) {
 	FILE *tmp; /* FILE pointer to the file to save the seek list into */
 	char errormessage[1024]; /* error message buffer */
 	char tmpname[512]; /* enumerated name of the file to save the seeks into */
+	char formatted_blocksize[DEFAULT_BLOCKSZ_BUFFER_SIZE]; /* includes character suffix to denote size */
 	seekhdr_t *sp; 
         xdd_plan_t *planp;
 
@@ -367,18 +375,22 @@ xdd_save_seek_list(target_data_t *tdp) {
 				opc = "u";
 			
 			if (tdp->td_seekhdr.seek_options & SO_SEEK_NONE) {
-				fprintf(tmp,"%010d %012llu %d %s %016llu %016llu\n",
+				/* Format blocksize before saving */
+				xddfunc_convert_bytes_to_units(sp->seeks[0].blocksize, formatted_blocksize, DEFAULT_BLOCKSZ_BUFFER_SIZE);
+				fprintf(tmp,"%010d %012llu %s %s %016llu %016llu\n",
 					i,
 					(unsigned long long)sp->seeks[0].block_location, 
-					sp->seeks[0].blocksize, 
+					formatted_blocksize, 
 					opc, 
 					(unsigned long long)(sp->seeks[i].time1),
 					(unsigned long long)(sp->seeks[i].time2));
 			} else {
-				fprintf(tmp,"%010d %012llu %d %s %016llu %016llu\n",
+				/* Format blocksize before saving */
+				xddfunc_convert_bytes_to_units(sp->seeks[i].blocksize, formatted_blocksize, (size_t)sizeof(formatted_blocksize));
+				fprintf(tmp,"%010d %012llu %s %s %016llu %016llu\n",
 					i,
 					(unsigned long long)sp->seeks[i].block_location, 
-					sp->seeks[i].blocksize, 
+					formatted_blocksize, 
 					opc, 
 					(unsigned long long)(sp->seeks[i].time1),
 					(unsigned long long)(sp->seeks[i].time2));
@@ -459,18 +471,19 @@ xdd_save_seek_list(target_data_t *tdp) {
 /*----------------------------------------------------------------------------*/
 int32_t
 xdd_load_seek_list(target_data_t *tdp) {
-	int32_t		i;  		/* index variable */
-	FILE 		*loadfp; 	/* Load File Pointer */
-	char 		*tp;  		/* token pointer */
-	int32_t 	ordinal; 	/* ordinal number of the seek */
-	uint64_t 	loc;  		/* location */
-	int32_t     blocksz;    /* Block Size */
-	nclk_t		t1,t2; 		/* time1 and time2 */
-	char 		rw;  		/* read or write operation */
-	char 		*status; 	/* status of the fgets */
-	struct seekhdr	*sp;
-	char 		line[LINE_LENGTH]; 	/* one line of characters */
-
+	int32_t		i;  										/* index variable */
+	FILE 		*loadfp; 									/* Load File Pointer */
+	char 		*tp;  										/* token pointer */
+	int32_t 	ordinal; 									/* ordinal number of the seek */
+	uint64_t 	loc;  										/* location */
+	uint64_t     blocksz;    								/* Block Size */
+	char 		blocksz_buf[DEFAULT_BLOCKSZ_BUFFER_SIZE]; 	/* Block size buffer */
+	nclk_t		t1,t2; 										/* time1 and time2 */
+	char 		rw;  										/* read or write operation */
+	char 		*status; 									/* status of the fgets */
+	struct seekhdr	*sp;									/* seek info header */
+	char 		line[LINE_LENGTH]; 							/* one line of characters */
+	int parse_error = 0;
 
 	sp = &tdp->td_seekhdr;
 	/* open the load file */
@@ -492,10 +505,10 @@ xdd_load_seek_list(target_data_t *tdp) {
 		/* Check for comment line */
 		if (*tp == COMMENT) continue;
 		/* Must be a seek line */
-		if (sscanf(line,"%d %llu %d %c %llu %llu", 
+		if (sscanf(line,"%d %llu %s %c %llu %llu", 
 			&ordinal,
 			(unsigned long long *)(&loc),
-			&blocksz,
+			blocksz_buf,
 			&rw,
 			(unsigned long long *)(&t1),
 			(unsigned long long *)(&t2)) != 6) {
@@ -504,6 +517,8 @@ xdd_load_seek_list(target_data_t *tdp) {
 				return(-1);
 		}
 		sp->seeks[i].block_location = loc;
+		blocksz = xddfunc_parse_size_with_units(blocksz_buf, "blocksize", &parse_error);
+		if (parse_error) return(-1);
 		if ((rw == 'w') || (rw == 'W')) 
 			sp->seeks[i].operation = SO_OP_WRITE;
 		else if ((rw == 'n') || (rw == 'N')) 

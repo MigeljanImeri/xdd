@@ -387,7 +387,6 @@ xdd_combine_results(results_t *to, results_t *from, xdd_plan_t *planp) {
 	to->xfer_size_blocks = from->xfer_size_blocks;	// Transfer size in blocks 
 	to->xfer_size_kbytes = from->xfer_size_kbytes;	// Transfer size in Kbytes 
 	to->xfer_size_mbytes = from->xfer_size_mbytes;	// Transfer size in Mbytes 
-	to->reqsize = from->reqsize; 					// RequestSize from the target_data 
 	to->pass_number = from->pass_number; 			// Pass number of this set of results 
 	to->optype = from->optype;			 			// operation type - read, write, or mixed 
 
@@ -711,7 +710,6 @@ xdd_extract_pass_results(results_t *rp, target_data_t *tdp, xdd_plan_t *planp) {
 	rp->read_op_count = tdp->td_counters.tc_accumulated_read_op_count;// int64
 	rp->write_op_count = tdp->td_counters.tc_accumulated_write_op_count;// int64
 	rp->error_count = tdp->td_counters.tc_current_error_count;	// int64
-	rp->reqsize = tdp->td_reqsize;						// int32
 
 	// Operation type
 	if (tdp->td_rwratio == 0.0) 

@@ -182,8 +182,7 @@ xdd_target_info(FILE *out, target_data_t *tdp) {
 	fprintf(out,"\t\tPer-pass time limit in seconds, %f\n",tdp->td_time_limit);
 	fprintf(out,"\t\tPass seek randomization, %s", (tdp->td_target_options & TO_PASS_RANDOMIZE)?"enabled\n":"disabled\n");
 	fprintf(out,"\t\tFile write synchronization, %s", (tdp->td_target_options & TO_SYNCWRITE)?"enabled\n":"disabled\n");
-	fprintf(out,"\t\tBlocksize in bytes, %d\n", tdp->td_block_size);
-	fprintf(out,"\t\tRequest size, %d, %d-byte blocks, %d, bytes\n",tdp->td_reqsize,tdp->td_block_size,tdp->td_reqsize*tdp->td_block_size);
+	fprintf(out,"\t\tBlocksize in bytes, %ld\n", tdp->td_block_size);
 	fprintf(out,"\t\tNumber of Operations, %lld\n", (long long int)tdp->td_target_ops);
 
 	// Total Data Transfer for this TARGET
@@ -204,8 +203,9 @@ xdd_target_info(FILE *out, target_data_t *tdp) {
 		xdd_display_kmgt(out, tdp->td_seekhdr.seek_range*tdp->td_block_size, tdp->td_block_size);
 	}
 	fprintf(out, "\t\tSeek pattern, %s\n", tdp->td_seekhdr.seek_pattern);
-	if (tdp->td_seekhdr.seek_stride > tdp->td_reqsize)
-		fprintf(out, "\t\tSeek Stride, %d, %d-byte blocks, %d, bytes\n",tdp->td_seekhdr.seek_stride,tdp->td_block_size,tdp->td_seekhdr.seek_stride*tdp->td_block_size);
+	// Cast to check explicitly, stride is either 1 or positive argument value so this is not affecting logic
+	if ((uint64_t)tdp->td_seekhdr.seek_stride > tdp->td_target_ops)
+		fprintf(out, "\t\tSeek Stride, %ld, %ld-byte blocks, %ld, bytes\n",tdp->td_seekhdr.seek_stride,tdp->td_block_size,tdp->td_seekhdr.seek_stride*tdp->td_block_size);
 	fprintf(out, "\t\tFlushwrite interval, %lld\n", (long long)tdp->td_flushwrite);
 	fprintf(out,"\t\tI/O memory buffer is %s\n",
 		(tdp->td_target_options & TO_SHARED_MEMORY)?"a shared memory segment":"a normal memory buffer");
@@ -246,7 +246,7 @@ xdd_target_info(FILE *out, target_data_t *tdp) {
 		fprintf(out," enabled for %s verification.\n", (tdp->td_target_options & TO_VERIFY_LOCATION)?"Location":"Content");
 	else fprintf(out," disabled.\n");
 	fprintf(out,"\t\tDirect I/O, %s", (tdp->td_target_options & TO_DIO)?"enabled\n":"disabled\n");
-	fprintf(out, "\t\tPretruncation, %lld, %d-byte blocks, %lld bytes\n", (long long int)tdp->td_pretruncate, tdp->td_block_size,
+	fprintf(out, "\t\tPretruncation, %lld, %ld-byte blocks, %lld bytes\n", (long long int)tdp->td_pretruncate, tdp->td_block_size,
 		(long long int)(tdp->td_pretruncate * tdp->td_block_size));
 	fprintf(out, "\t\tQueue Depth, %d\n",tdp->td_queue_depth);
 	/* Timestamp options */

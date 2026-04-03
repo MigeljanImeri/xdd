@@ -25,11 +25,12 @@
 //#define reg register
 
 /* Define Base10 numeric constants */
-#define ONE   		1LL 			/**< 10^0, as opposed to 2^0 */
-#define THOUSAND 	1000LL 			/**< 10^3, as opposed to 2^10 */
-#define MILLION  	1000000LL 		/**< 10^6, as opposed to 2^20 */
-#define BILLION  	1000000000LL 	/**< 10^9, as opposed to 2^30 */
-#define TRILLION 	1000000000000LL /**< 10^12, as opposed to 2^40 */
+#define ONE   		    1LL 			/**< 10^0, as opposed to 2^0 */
+#define THOUSAND 	    1000LL 			/**< 10^3, as opposed to 2^10 */
+#define MILLION  	    1000000LL 		/**< 10^6, as opposed to 2^20 */
+#define FLOAT_MILLION   1000000.0       /** 1 million as a float      */
+#define BILLION  	    1000000000LL 	/**< 10^9, as opposed to 2^30 */
+#define TRILLION 	    1000000000000LL /**< 10^12, as opposed to 2^40 */
 #define FLOAT_MILLION 	1000000.0 		/**< 10^6 as floating point */
 #define FLOAT_BILLION 	1000000000.0 	/**< 10^9 as floating point */
 #define FLOAT_TRILLION 	1000000000000.0 /**< 10^12 as floating point */
