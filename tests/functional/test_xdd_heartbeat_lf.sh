@@ -21,7 +21,7 @@ touch "${test_file}"
 
 run_time=6
 lines="$((run_time-1))"
-"${XDDTEST_XDD_EXE}" -target "${test_file}" -reqsize 1024 -numreqs 1024 -runtime "${run_time}" -hb lf -hb output "${test_dir}/data2"
+"${XDDTEST_XDD_EXE}" -target "${test_file}" -blocksize 1m -numreqs 1024 -runtime "${run_time}" -hb lf -hb output "${test_dir}/data2"
 
 # get number of lines printed
 head "-${lines}" "${test_dir}/data2.T0000.csv" >> "${test_dir}/data3"

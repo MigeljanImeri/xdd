@@ -124,7 +124,6 @@ xdd_ts_setup(target_data_t *tdp) {
 
 	tdp->td_ts_table.ts_hdrp->tsh_target_thread_id = tdp->td_pid;
 	tdp->td_ts_table.ts_hdrp->tsh_res = cycleval;
-	tdp->td_ts_table.ts_hdrp->tsh_reqsize = tdp->td_xfer_size;
 	tdp->td_ts_table.ts_hdrp->tsh_blocksize = tdp->td_block_size;
 	strcpy(tdp->td_ts_table.ts_hdrp->tsh_id, xgp->id);
 	tdp->td_ts_table.ts_hdrp->tsh_range = tdp->td_seekhdr.seek_range;
@@ -415,19 +414,15 @@ xdd_ts_reports(target_data_t *tdp) {
 	    loop_time = 0;
 	} else {
 	    if (ts_hdrp->tsh_blocksize == 0) {
-		fprintf(xgp->errout,"%s: ALERT! ts_reports encounterd a blocksize of zero for target %d, setting it to %d\n",
+		fprintf(xgp->errout,"%s: ALERT! ts_reports encounterd a blocksize of zero for target %d, setting it to %ld\n",
 			xgp->progname, tdp->td_target_number, tdp->td_block_size);
 		fflush(xgp->errout);
 		ts_hdrp->tsh_blocksize = tdp->td_block_size;
 	    }
 	    if (ts_hdrp->tsh_tte[i].tte_byte_offset  > ts_hdrp->tsh_tte[i-1].tte_byte_offset) {
-		distance[i] = (ts_hdrp->tsh_tte[i].tte_byte_offset -
-			       (ts_hdrp->tsh_tte[i-1].tte_byte_offset +
-				(ts_hdrp->tsh_reqsize)));
+		distance[i] = ts_hdrp->tsh_tte[i].tte_byte_offset - ts_hdrp->tsh_tte[i-1].tte_byte_offset;
 	    } else {
-		distance[i] = (ts_hdrp->tsh_tte[i-1].tte_byte_offset -
-			       (ts_hdrp->tsh_tte[i].tte_byte_offset +
-				(ts_hdrp->tsh_reqsize)));
+		distance[i] = ts_hdrp->tsh_tte[i-1].tte_byte_offset - ts_hdrp->tsh_tte[i].tte_byte_offset;
 	    }
 	    loop_time = ts_hdrp->tsh_tte[i].tte_disk_end - ts_hdrp->tsh_tte[i-1].tte_disk_end;
 	}
@@ -451,11 +446,11 @@ xdd_ts_reports(target_data_t *tdp) {
 	frelative_time = (double)relative_time;
 	floop_time = (double)loop_time;
 	if (disk_fio_time > 0.0)
-	    disk_irate = ((ts_hdrp->tsh_reqsize)/(disk_fio_time / BILLION))/1000000.0;
+	    disk_irate = ((ts_hdrp->tsh_blocksize)/(disk_fio_time / BILLION))/FLOAT_MILLION;
 	else disk_irate = 0.0;
 	net_fio_time = (double)net_io_time[i];
 	if (net_fio_time > 0.0)
-	    net_irate = ((ts_hdrp->tsh_reqsize)/(net_fio_time / BILLION))/1000000.0;
+	    net_irate = ((ts_hdrp->tsh_blocksize)/(net_fio_time / BILLION))/FLOAT_MILLION;
 	else net_irate = 0.0;
 	if (tsp->ts_options & TS_DETAILED) { /* Print the detailed report */
 	    disk_start_ts = ts_hdrp->tsh_tte[i].tte_disk_start + ts_hdrp->tsh_delta;
@@ -543,10 +538,9 @@ xdd_ts_reports(target_data_t *tdp) {
 
 	/* display the results */
 	if (ts_hdrp->tsh_blocksize > 0) {
-	    fprintf(tsfp,"Average seek distance in %d byte blocks, %lld, request size in blocks, %d\n",
+	    fprintf(tsfp,"Average seek distance in %d byte blocks, %lld\n",
 		    ts_hdrp->tsh_blocksize,
-		    (long long)mean_distance,
-		    ts_hdrp->tsh_reqsize/ts_hdrp->tsh_blocksize);
+		    (long long)mean_distance);
 	    fflush(tsfp);
 	} else {
 	    fprintf(tsfp,"No average seek distance with 0 byte blocks\n");

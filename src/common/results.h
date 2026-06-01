@@ -41,7 +41,6 @@ struct results {
 	double		xfer_size_blocks;		// Transfer size in blocks 
 	double		xfer_size_kbytes;		// Transfer size in Kbytes 
 	double		xfer_size_mbytes;		// Transfer size in Mbytes 
-	int32_t		reqsize; 				// RequestSize from the Target Data Struct 
 	int32_t		pass_number; 			// Pass number of this set of results 
 	char		*optype;	 			// operation type - read, write, or mixed 
 

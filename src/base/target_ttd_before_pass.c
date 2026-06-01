@@ -204,7 +204,7 @@ xdd_init_target_data_before_pass(target_data_t *tdp) {
 	tdp->td_current_bytes_issued = 0;
 	tdp->td_current_bytes_completed = 0;
 	tdp->td_current_bytes_remaining = tdp->td_target_bytes_to_xfer_per_pass;
-	tdp->td_xfer_size = tdp->td_reqsize * tdp->td_block_size;
+	tdp->td_xfer_size = tdp->td_block_size;
 
 	/* Get the starting time stamp */
 	nclk_now(&tdp->td_counters.tc_pass_start_time);

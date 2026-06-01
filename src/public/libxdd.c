@@ -255,7 +255,6 @@ int local_target_init(target_data_t *tdp,
 	tdp->td_target_basename = fname;
 	tdp->td_queue_depth = tattr->num_threads;
 	tdp->td_block_size = pattr->block_size;
-	tdp->td_reqsize = pattr->request_size;
 	tdp->td_bytes = tattr->length;
 	tdp->td_start_offset = tattr->u.in.start_offset;
 	if (tattr->u.in.dio_flag)

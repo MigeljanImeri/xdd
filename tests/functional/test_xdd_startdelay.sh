@@ -24,7 +24,7 @@ touch "${test_file}"
 num_passes=2
 start_delay=4
 correct_time=$((num_passes*start_delay))
-xdd_cmd="${XDDTEST_XDD_EXE} -target ${test_file} -op write -reqsize 1024 -numreqs 10 -passes ${num_passes} -startdelay ${start_delay}"
+xdd_cmd="${XDDTEST_XDD_EXE} -target ${test_file} -op write -blocksize 1m -numreqs 10 -passes ${num_passes} -startdelay ${start_delay}"
 # shellcheck disable=SC2086
 timed_pass_output="$(2>&1 ${TIME_CMD} -p ${xdd_cmd})"
 elapsed_time=$(echo "${timed_pass_output}" | grep '^real' | awk '{print $2}')

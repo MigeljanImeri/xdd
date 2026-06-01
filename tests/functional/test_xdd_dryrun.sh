@@ -19,15 +19,16 @@ initialize_test
 test_dir="${XDDTEST_LOCAL_MOUNT}/${TESTNAME}"
 log_file="$(get_log_file)"
 
-# ReqSize 4096, Bytes 1MB, Targets 1, QueueDepth 4, Passes 1
+# Blocksize 4m, Bytes 1MB, Targets 1, QueueDepth 4, Passes 1
 data_file="${test_dir}/test"
 
 # write a file
-"${XDDTEST_XDD_EXE}" -op write -reqsize 4096 -mbytes 1 -targets 1 "${data_file}" -qd 4 -passes 1 -datapattern random
+# Old: reqsize 4096
+"${XDDTEST_XDD_EXE}" -op write -mbytes 1 -targets 1 "${data_file}" -qd 4 -passes 1 -datapattern random
 
 # now run dryrun
 sleep_seconds=2
-"${XDDTEST_XDD_EXE}" -op read  -reqsize 1 -numreqs 1 -targets 1 "${data_file}" -dryrun &
+"${XDDTEST_XDD_EXE}" -op read  -blocksize 1 -numreqs 1 -targets 1 "${data_file}" -dryrun &
 pid=$!
 
 # sleep for 2 seconds before checking if XDD process is still running

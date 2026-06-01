@@ -33,11 +33,11 @@ while [ "${cs_time}" -gt 40 ]; do
     cs_time=$(date | cut -f 3 -d ':' | cut -f 1 -d ' ')
 done
 
-"${XDDTEST_XDD_EXE}" -target "${test_file}" -op write -reqsize 9999 -numreqs 9999 -runtime "${run_time}" -hb tod -hb output "${test_file2}"
+"${XDDTEST_XDD_EXE}" -target "${test_file}" -op write -blocksize 9999k -numreqs 9999 -runtime "${run_time}" -hb tod -hb output "${test_file2}"
 
 # gets displayed date from output file
 for ((j=1; j<run_time; j++)); do
-    rc_time[${j}]=$(cut -f $((field*j)) -d ',' "${test_file2}.T0000.csv")
+    rc_time[j]=$(cut -f $((field*j)) -d ',' "${test_file2}.T0000.csv")
 done
 
 # gets current minute, hour, day, and month
@@ -49,7 +49,7 @@ cmo_time=$(echo "${c_time}" | cut -f 2 -d  ' ')
 
 # gets displayed minute, hour, day, and month
 for ((j=1; j<run_time; j++)); do
-    rc_time[${j}]=$(cut -f $((field*j)) -d ',' "${test_file2}.T0000.csv")
+    rc_time[j]=$(cut -f $((field*j)) -d ',' "${test_file2}.T0000.csv")
 done
 
 test_success=0
