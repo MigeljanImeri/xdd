@@ -265,6 +265,12 @@ xdd_calculate_xfer_info(target_data_t *tdp) {
 		tdp->td_target_bytes_to_xfer_per_pass = (uint64_t)(tdp->td_numreqs * tdp->td_xfer_size);
 	else if (tdp->td_bytes)
 		tdp->td_target_bytes_to_xfer_per_pass = (uint64_t)tdp->td_bytes;
+	
+	// Extra check to allow for default numreqs if not specified
+	// If there is no reqs or bytes but blocksize was specified
+	else if (!tdp->td_numreqs && !tdp->td_bytes && tdp->td_xfer_size > 0)
+		tdp->td_target_bytes_to_xfer_per_pass = (uint64_t)(tdp->td_xfer_size);
+
 	else { // Yikes - something was not specified
 		fprintf(xgp->errout,"%s: xdd_calculate_xfer_info: ERROR! iothread for target %d has numreqs of %lld, bytes of %lld - one of these must be specified\n",
 			xgp->progname, tdp->td_target_number, (long long)tdp->td_numreqs, (long long)tdp->td_bytes);

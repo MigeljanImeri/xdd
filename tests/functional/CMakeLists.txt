@@ -1,4 +1,5 @@
 set(FUNCTIONAL
+    test_xdd_arg_scope_logic.sh
     test_xdd_createnewfiles.sh
     test_xdd_createnewfiles2.sh
     test_xdd_dryrun.sh

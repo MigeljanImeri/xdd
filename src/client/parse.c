@@ -81,7 +81,7 @@ xdd_parse_args(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags) {
             if ((strcmp(xdd_func[funci].func_name, (char *)((argv[argi])+1)) == 0) ||
                 (strcmp(xdd_func[funci].func_alt, (char *)((argv[argi])+1)) == 0)) {
                 argvp = &(argv[argi]);
-                status = (int)xdd_func[funci].func_ptr(planp, arg_count, argvp, flags);
+                status = xdd_func[funci].func_ptr(planp, arg_count, argvp, flags, -1);
 
                 if (status == 0) {
                     invalid = 1;
