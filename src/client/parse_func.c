@@ -30,6 +30,157 @@
 
 extern	xdd_func_t xdd_func[];
 
+/* Return 1 if this parse-table entry must not be invoked inside -target/-targets scope. */
+static int
+xddfunc_option_is_target_scope_meta(const char *name)
+{
+	return (strcmp(name, "target") == 0 || strcmp(name, "targets") == 0);
+}
+
+/*
+ * Parse undashed tokens argv[pos..] until '-' or argc.
+ * Invoke handler once per option with target_idx (per-target scope).
+ * Returns next argv index to consume (relative to argv[0]).
+ */
+static int
+xddfunc_parse_single_target_scoped_options(xdd_plan_t *planp, int32_t argc, char *argv[],
+    int pos, uint32_t flags, int32_t target_idx)
+{
+	// While valid position, argument exists, and it is not preceeded by a dash
+	while (pos < argc && argv[pos] != NULL && argv[pos][0] != '-') {
+		int func_not_found = 1;
+		int funci = 0;
+		
+		// Scan parse table to find a match
+		while (xdd_func[funci].func_name) 
+		{
+			if ((strcmp(xdd_func[funci].func_name, argv[pos]) == 0) ||
+			    (strcmp(xdd_func[funci].func_alt, argv[pos]) == 0)) 
+			{
+				if (xddfunc_option_is_target_scope_meta(xdd_func[funci].func_name)) 
+				{
+					break;
+				}
+				char **argvp = &argv[pos];
+				int func_status = xdd_func[funci].func_ptr(planp, argc - pos, argvp, flags, target_idx);
+				if (func_status == 0) 
+				{
+					xddfunc_invalid_option(pos + 1, &argv[pos], flags);
+					exit(XDD_RETURN_VALUE_INVALID_ARGUMENT);
+				} 
+				else if (func_status == -1) 
+				{
+					exit(XDD_RETURN_VALUE_INVALID_OPTION);
+				}
+				pos += func_status;
+				func_not_found = 0;
+				break;
+			}
+			funci++;
+		}
+		
+		if (func_not_found) 
+		{
+			xddfunc_invalid_option(pos + 1, &argv[pos], flags);
+			exit(XDD_RETURN_VALUE_INVALID_OPTION);
+		}
+	}
+	return pos;
+}
+
+/*
+ * Same as above but apply each scoped option to every target in [t_first, t_last).
+ * Token advance uses one handler call (first target index) so multi-token options
+ * count correctly in phase 2.
+ */
+static int
+xddfunc_parse_multi_target_scoped_options(xdd_plan_t *planp, int32_t argc, char *argv[],
+    int pos, uint32_t flags, int t_first, int t_last)
+{
+	int j; // Target increment
+	int funci; // Function increment
+	int func_status;
+	int func_not_found;
+	char **argvp;
+
+	// While valid position, argument exists, and it is not preceeded by a dash
+	while (pos < argc && argv[pos] != NULL && argv[pos][0] != '-') {
+		func_not_found = 1;
+		funci = 0;
+
+		// Scan parse table for a match
+		while (xdd_func[funci].func_name) {
+			if ((strcmp(xdd_func[funci].func_name, argv[pos]) == 0) ||
+			    (strcmp(xdd_func[funci].func_alt, argv[pos]) == 0)) 
+			{
+				// Ensure specifier is not target or targets, causing a loop
+				if (xddfunc_option_is_target_scope_meta(xdd_func[funci].func_name)) 
+				{
+					break;
+				}
+
+				// Prepare function for execution
+				argvp = &argv[pos];
+
+				// Phase 1
+				if (flags & XDD_PARSE_PHASE1) 
+				{
+					// For each new target
+					for (j = t_first; j < t_last; j++) 
+					{
+						// Execute function on target
+						func_status = (int)xdd_func[funci].func_ptr(planp, argc - pos, argvp, flags, j);
+						
+						// No tokens parsed
+						if (func_status == 0) 
+						{
+							xddfunc_invalid_option(pos + 1, &argv[pos], flags);
+							exit(XDD_RETURN_VALUE_INVALID_ARGUMENT);
+						} 
+						
+						// Error occured
+						else if (func_status == -1) 
+						{
+							exit(XDD_RETURN_VALUE_INVALID_OPTION);
+						}
+					}
+				}
+
+				// Phase 2
+				else 
+				{
+					// Execute function on a single target for sanity check
+					func_status = (int)xdd_func[funci].func_ptr(planp, argc, argvp, flags, t_first);
+					
+					// No tokens parsed 
+					if (func_status == 0) 
+					{
+						xddfunc_invalid_option(pos + 1, &argv[pos], flags);
+						exit(XDD_RETURN_VALUE_INVALID_ARGUMENT);
+					} 
+					
+					// Error occured
+					else if (func_status == -1) 
+					{
+						exit(XDD_RETURN_VALUE_INVALID_OPTION);
+					}
+				}
+				pos += func_status;
+				func_not_found = 0;
+				break;
+			}
+			funci++;
+		}
+
+		if (func_not_found) 
+		{
+			xddfunc_invalid_option(pos + 1, &argv[pos], flags);
+			exit(XDD_RETURN_VALUE_INVALID_OPTION);
+		}
+	}
+	return pos;
+}
+
 /*-----------------------------------------------------All the function sub routines ---------------------------------------------*/
 // These routines are specified in alphabetical order
 // There are two basic types of options that can be specified: global and target options.
@@ -162,46 +313,50 @@ xddfunc_parse_size_with_units(const char *value, const char *type, int *error)
 } // End of xddfunc_parse_size_with_units()
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_blocksize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_blocksize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args,i;
-    int target_number;
+	int args = 0;
+	int i;
 	uint64_t block_size;
-    target_data_t *tdp;
-	int* parse_error = 0;
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+	target_data_t *tdp;
+	int parse_error = 0;
 
-	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
+	if (xdd_parse_arg_count_check(args, argc, argv[0]) == 0)
 		return(0);
 
-	block_size = xddfunc_parse_size_with_units(argv[args+1], "blocksize", parse_error);
-	if (parse_error) return (-1);
+	block_size = xddfunc_parse_size_with_units(argv[args + 1], "blocksize", &parse_error);
+	if (parse_error)
+		return(-1);
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
-		if (tdp == NULL) return(-1);
+	// Individual target passed
+	if (target >= 0) { 
+		if (flags & XDD_PARSE_PHASE1) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
+			if (tdp == NULL)
+				return(-1);
 
-		tdp->td_block_size = block_size;
-		if (tdp->td_block_size <= 0) {
-			fprintf(xgp->errout, "%s: blocksize of %ld is not valid. blocksize must be a number greater than 0\n",
-			xgp->progname,
-			tdp->td_block_size);
-			return(0);
-		}
-        return(args+2);
-	} else { // Put this option into all Targets
-		if (flags & XDD_PARSE_PHASE2) {
-			tdp = planp->target_datap[0];
-			i = 0;
-			while (tdp) {
-				tdp->td_block_size = block_size;
-				i++;
-				tdp = planp->target_datap[i];
+			tdp->td_block_size = block_size;
+			if (tdp->td_block_size <= 0) {
+				fprintf(xgp->errout,
+				    "%s: blocksize of %ld is not valid. blocksize must be a number greater than 0\n",
+				    xgp->progname, tdp->td_block_size);
+				return(0);
 			}
 		}
-        return(2);
+		return(args + 2);
 	}
+
+	// Global target passed: apply to all targets in phase 2 only
+	if (flags & XDD_PARSE_PHASE2) {
+		tdp = planp->target_datap[0];
+		i = 0;
+		while (tdp) {
+			tdp->td_block_size = block_size;
+			i++;
+			tdp = planp->target_datap[i];
+		}
+	}
+	return(args + 2);
 } // End of xddfunc_blocksize()
 /*----------------------------------------------------------------------------*/
 // Specify the number of Bytes to transfer per pass
@@ -211,28 +366,23 @@ xddfunc_blocksize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // requests will be calculated at a later time.
 //
 int
-xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int args, i;
-	int target_number;
+	int args = 0;
+	int i;
 	target_data_t *tdp;
 	uint64_t bytes;
-	int* parse_error = 0;
-
-
-	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-	if (args < 0)
-		return(-1);
+	int parse_error = 0;
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	bytes = xddfunc_parse_size_with_units(argv[args+1], "bytes", parse_error);
+	bytes = xddfunc_parse_size_with_units(argv[args+1], "bytes", &parse_error);
 	if (parse_error) return (-1);
 
 	
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL)
 			return(-1);
 
@@ -255,7 +405,7 @@ xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 } // End of xddfunc_bytes()
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_combinedout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_combinedout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 
 	if (argc <= 1) {
@@ -275,16 +425,10 @@ xddfunc_combinedout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 } // End of xddfunc_combinedout()
 /*----------------------------------------------------------------------------*/
 // Set the congestion control algorithm.
-int xddfunc_congestion(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+int xddfunc_congestion(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int args;
-	int target_number;
+	int args = 0;
 	const char *congestion;
-
-	args = xdd_parse_target_number(planp, argc, &argv[0],
-								   flags, &target_number);
-	if (args < 0)
-		return(-1);
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -293,9 +437,9 @@ int xddfunc_congestion(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 	congestion = argv[args + 1];
 
 	/* Set the congestion name for the relevant targets */
-	if (target_number >= 0) {
+	if (target >= 0) {
 		/* Set this option value for a specific target */
-		target_data_t *tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		target_data_t *tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL)
 			return(-1);
 		tdp->xni_tcp_congestion = congestion;
@@ -316,13 +460,9 @@ int xddfunc_congestion(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 } // End of xddfunc_congestion()
 /*----------------------------------------------------------------------------*/
 // Set the magic cookie for network transfers
-int xddfunc_cookie(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+int xddfunc_cookie(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int target_number = -1;
-	int args = xdd_parse_target_number(planp, argc, &argv[0],
-								   flags, &target_number);
-	if (args < 0)
-		return(-1);
+	int args = 0;
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -352,9 +492,9 @@ int xddfunc_cookie(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 	}
 
 	// Set the magic cookie for the relevant targets
-	if (target_number >= 0) {
+	if (target >= 0) {
 		/* Set this option value for a specific target */
-		target_data_t *tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		target_data_t *tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL)
 			return(-1);
 		memcpy(tdp->td_magic_cookie, magic_cookie, sizeof(tdp->td_magic_cookie));
@@ -376,17 +516,14 @@ int xddfunc_cookie(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 /*----------------------------------------------------------------------------*/
 // Create new target files for each pass.
 int
-xddfunc_createnewfiles(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_createnewfiles(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int i;
     target_data_t *tdp;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
-
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options |= TO_CREATE_NEW_FILES;
@@ -407,7 +544,7 @@ xddfunc_createnewfiles(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 } // End of xddfunc_createnewfiles()
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_csvout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_csvout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (flags & XDD_PARSE_PHASE2) {
 		if (argc <= 1) {
@@ -429,11 +566,10 @@ xddfunc_csvout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Arguments: -datapattern [target #] # <option>
 //
 int
-xddfunc_datapattern(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_datapattern(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int           		args;
+	int           		args = 0;
 	size_t              i;
-	int           		target_number;
 	target_data_t        		*tdp;
 	char          		*pattern_type;      // The pattern type of ascii, hex, random, ...etc
 	unsigned char 		*pattern;           // The ACSII representation of the specified data pattern
@@ -446,15 +582,12 @@ xddfunc_datapattern(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 	struct stat         stat_buf;           // Stat struct to get size of data file
 											// if DP_FILE_PATTERN/DP_WHOLEFILE_PATTERN is set
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
-
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
 	pattern_type = (char *)argv[args+1];
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
         retval = args+2;
@@ -838,7 +971,7 @@ xddfunc_datapattern(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 /*----------------------------------------------------------------------------*/
 // Set the DEBUG global option
 int
-xddfunc_debug(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_debug(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (argv[1] == NULL) {
 		fprintf(stderr,"xddfunc_debug: No option for -debug specified: defaulting to -debug ALL\n");
@@ -899,17 +1032,15 @@ xddfunc_debug(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
 // Delete the target file when complete
 int
-xddfunc_deletefile(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_deletefile(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
-
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options |= TO_DELETEFILE;
@@ -930,18 +1061,16 @@ xddfunc_deletefile(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 /*----------------------------------------------------------------------------*/
 // Arguments: -devicefile [target #] - OBSOLETE
 int
-xddfunc_devicefile(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_devicefile(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
-
     // At this point the "target_number" is valid
-	if (target_number >= 0) { /* Set this option for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options |= TO_DEVICEFILE;
@@ -963,19 +1092,16 @@ xddfunc_devicefile(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 // Specify the use of direct I/O for a single target or for all targets
 // Arguments: -dio [target #]
 int
-xddfunc_dio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_dio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
-
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
-
     // At this point the "target_number" is valid
-	if (target_number >= 0) { /* Set this option for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options |= TO_DIO;
@@ -995,7 +1121,7 @@ xddfunc_dio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_dryrun(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_dryrun(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	xgp->global_options |= GO_DRYRUN;
     return(1);
@@ -1009,11 +1135,11 @@ xddfunc_dryrun(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 //				isdestination
 //
 int
-xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int i,j;
-    int args, args_index;
-    int target_number;
+    int args = 0;
+	int  args_index;
     target_data_t *tdp;
     char *hostname, *base_port, *port_count, *numa_node;
     char *cp, *sp;
@@ -1024,19 +1150,16 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     int len;
     char cmdline[256];
 
-
     if (argc <= 1) {
 		fprintf(stderr,"%s: Error: No value specified for EndToEnd option\n", xgp->progname);
 		return(-1);
     }
 	planp->plan_options |= PLAN_ENDTOEND;
     args_index = 1;
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
 
 	// Make sure that the Target Data Structs exists and that the E2E structures have been allocated
-	if (target_number >= 0) {
-    	tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) {
+    	tdp = xdd_get_target_datap(planp, target, argv[0]);
 	   	if (tdp == NULL) return(-1);
 		if (NULL == tdp->td_e2ep) { // If there is no e2e struct then allocate one.
 	    	tdp->td_e2ep = xdd_get_e2ep();
@@ -1045,7 +1168,7 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 					"END TO END Data Structure for target %d\n",
 		    		xgp->progname,
 					(int)sizeof(xint_data_pattern_t),
-					target_number);
+					target);
 	    		return(-1);
 			}
 		}
@@ -1060,7 +1183,7 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 						"END TO END Data Structure for target %d\n",
 		    			xgp->progname,
 						(int)sizeof(xint_data_pattern_t),
-						target_number);
+						target);
 	    			return(-1);
 				}
 			}
@@ -1073,12 +1196,12 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-    if (target_number >= 0) { /* Set this option value for a specific target */
+    if (target >= 0) { /* Set this option value for a specific target */
 		args_index += args;
-		if (target_number >= MAX_TARGETS) { /* Make sure the target number is somewhat valid */
+		if (target >= MAX_TARGETS) { /* Make sure the target number is somewhat valid */
 	    	fprintf(stderr, "%s: Invalid Target Number %d specified for End-to-End option %s\n",
 		    	xgp->progname,
-				target_number,
+				target,
 				argv[args_index]);
 	    	return(0);
 		}
@@ -1217,8 +1340,8 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 
 
 		// Now we need to put the address and base_port and number of ports into the Target Data Struct for this Target or all Targets
-		if (target_number >= 0) {
-	    	tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+	    	tdp = xdd_get_target_datap(planp, target, argv[0]);
 	    	if (tdp == NULL) return(-1);
 
 	    	tdp->td_target_options |= TO_ENDTOEND;
@@ -1330,8 +1453,8 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		// Set the target option flags that indicates this is the
 		// "source" host name for the -e2e option
 		args_index++;
-		if (target_number >= 0) {
-	    	tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+	    	tdp = xdd_get_target_datap(planp, target, argv[0]);
 	    	if (tdp == NULL) return(-1);
 	    	tdp->td_target_options |= TO_E2E_SOURCE;
 		} else {  /* set option for all targets */
@@ -1356,8 +1479,8 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		// Set the target option flags that indicates this is the
 		// "destination" host name for the -e2e option
 		args_index++;
-		if (target_number >= 0) {
-	    	tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+	    	tdp = xdd_get_target_datap(planp, target, argv[0]);
 	    	if (tdp == NULL) return(-1);
 	    	tdp->td_target_options |= TO_E2E_DESTINATION;
 		} else {  /* set option for all targets */
@@ -1375,8 +1498,8 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     } else if ((strcmp(argv[args_index], "port") == 0) ||  /* set the base port number to use for -e2e */
 	       (strcmp(argv[args_index], "baseport") == 0)) {
 		args_index++;
-		if (target_number >= 0) {
-	    	tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+	    	tdp = xdd_get_target_datap(planp, target, argv[0]);
 	    	if (tdp == NULL) return(-1);
 
 	    	tdp->td_target_options |= TO_ENDTOEND;
@@ -1403,8 +1526,8 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		return(args_index+1);
     } else if (strcmp(argv[args_index], "portcount") == 0) {  /* set the port count in each address table entry  */
 		args_index++;
-		if (target_number >= 0) {
-	    	tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+	    	tdp = xdd_get_target_datap(planp, target, argv[0]);
 	    	if (tdp == NULL) return(-1);
 	    	tdp->td_target_options |= TO_ENDTOEND;
 	    	number_of_ports = atoi(argv[args_index]);
@@ -1431,8 +1554,8 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	       (strcmp(argv[args_index], "srcmon") == 0)) {
 		// Monitor the Source Side in target_pass_loop()
 		args_index++;
-		if (target_number >= 0) {
-	    	tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+	    	tdp = xdd_get_target_datap(planp, target, argv[0]);
 	    	if (tdp == NULL) return(-1);
 	    	tdp->td_target_options |= TO_E2E_SOURCE_MONITOR;
 		} else {  /* set option for all targets */
@@ -1449,8 +1572,8 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		return(args_index);
     } else if ((strcmp(argv[args_index], "sourcepath") == 0) ||  /* complete source file path for restart option */
 	       (strcmp(argv[args_index], "srcpath") == 0)) {
-		if (target_number >= 0) {
-	    	tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+	    	tdp = xdd_get_target_datap(planp, target, argv[0]);
 	    	if (tdp == NULL) return(-1);
 	    	tdp->td_target_options |= TO_ENDTOEND;
 	    	source_path  = argv[args_index+1];
@@ -1480,7 +1603,7 @@ xddfunc_endtoend(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_errout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_errout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 
 	if (argc <= 1) {
@@ -1502,7 +1625,7 @@ xddfunc_errout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_extended_stats(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_extended_stats(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	xgp->global_options |= GO_EXTENDED_STATS;
     return(1);
@@ -1512,22 +1635,19 @@ xddfunc_extended_stats(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 // Arguments: -flushwrite [target #] #
 //
 int
-xddfunc_flushwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_flushwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
     target_data_t *tdp;
 	int64_t flushwrite;
-
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
 	flushwrite = atoll(argv[args+1]);
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_flushwrite = flushwrite;
@@ -1548,7 +1668,7 @@ xddfunc_flushwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 } // End of flushwrite()
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_fullhelp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_fullhelp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     xdd_usage(1);
     return(-1);
@@ -1574,23 +1694,19 @@ xddfunc_fullhelp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
  * Specifying -heartbeat multiple times will add these to the heartbeat output string FOR EACH TARGET
  */
 int
-xddfunc_heartbeat(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_heartbeat(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int 		args, i; // Number of args and a counter
-    int 		target_number; // The specific target number to update
+    int 		args = 0; 			// args
+	int i; 							// counter
     target_data_t 		*tdp;		// Current Target Data Struct being updated
-	char		*sp;	// String pointer
-	int			c1,c2;	// A single character
-	char		*cp;	// A single Character pointer
-	int			len;	// Length of the option string
-	int			digits;	// if set to 1 then string contains only numerical digits
+	char		*sp;				// String pointer
+	int			c1,c2;				// A single character
+	char		*cp;				// A single Character pointer
+	int			len;				// Length of the option string
+	int			digits;				// if set to 1 then string contains only numerical digits
 	int			return_value;
-	heartbeat_t	hb;		// A heartbeat structure for these options
-	char		*filename; // Pointer to the area that will store the file name
-
-
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+	heartbeat_t	hb;					// A heartbeat structure for these options
+	char		*filename; 			// Pointer to the area that will store the file name
 
 	if (argc < 1) {
 		fprintf(xgp->errout, "%s: ERROR: not enough arguments specified for the option '-heartbeat'\n",
@@ -1693,8 +1809,8 @@ xddfunc_heartbeat(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	// At this point we have figured out what was specified. Now we just have to put it into the proper Target Data Struct.
 	xgp->global_options |= GO_HEARTBEAT;
     // At this point the "target_number" is valid
-	if (target_number >= 0) { /* Set this option for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 		if (hb.hb_options)
 			tdp->td_hb.hb_options |= hb.hb_options;
@@ -1753,7 +1869,7 @@ xddfunc_heartbeat(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_help(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_help(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	int i,j,found;
 
@@ -1792,7 +1908,7 @@ xddfunc_help(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Specify an identification string for this run
 // Arguments: -id commandline|"string"
 int
-xddfunc_id(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_id(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	int32_t	j;
 
@@ -1820,7 +1936,7 @@ xddfunc_id(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_interactive(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_interactive(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	xgp->global_options |= GO_INTERACTIVE;
     return(1);
@@ -1834,21 +1950,22 @@ xddfunc_interactive(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 // requests will be calculated at a later time.
 //
 int
-xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 	uint64_t kbytes;
-	int* parse_error = 0;
+	int parse_error = 0;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	kbytes = xddfunc_parse_size_with_units(argv[args+1], "kbytes", parse_error);
+	kbytes = xddfunc_parse_size_with_units(argv[args+1], "kbytes", &parse_error);
 	if (parse_error)
 	{
 		fprintf(stderr, "%s: Invalid kbytes size: %ld. This value must be greater than 0\n",
@@ -1856,8 +1973,8 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 				kbytes);
 		return (-1);
 	}
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 		tdp->td_bytes = kbytes * 1024;
 		tdp->td_numreqs = 0;
@@ -1928,7 +2045,7 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 *
 */
 int
-xddfunc_lockstep(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_lockstep(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int 		mt;						// Master Target number
     int			st;						// Slave Target number
@@ -2146,19 +2263,15 @@ xddfunc_lockstep(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Arguments: -looseordering [target #]
 // aka -lo
 int
-xddfunc_looseordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_looseordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
     target_data_t *tdp;
 
-
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
-
     // At this point the "target_number" is valid
-	if (target_number >= 0) { /* Set this option for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options |= TO_ORDERING_STORAGE_LOOSE;
@@ -2181,13 +2294,13 @@ xddfunc_looseordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t fl
 /*----------------------------------------------------------------------------*/
 // Set the maxpri and process lock
 int
-xddfunc_maxall(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_maxall(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int status;
 
 	if (flags & XDD_PARSE_PHASE2) {
-		status = xddfunc_maxpri(planp, 1,0, flags);
-		status += xddfunc_processlock(planp, 1,0, flags);
+		status = xddfunc_maxpri(planp, 1, 0, flags, -1);
+		status += xddfunc_processlock(planp, 1, 0, flags, -1);
 		if (status < 2)
 			return(-1);
 	}
@@ -2196,10 +2309,9 @@ xddfunc_maxall(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
 // Specify the maximum number of errors to tolerate before exiting
 int
-xddfunc_maxerrors(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_maxerrors(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	long long errors;
-
 
 	if (argc <= 1) {
 		fprintf(stderr, "%s: Error: No value specified for max errors\n", xgp->progname);
@@ -2218,7 +2330,7 @@ xddfunc_maxerrors(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
 // Specify the maximum number of errors to print when displaying miscompares on a -verify contents
 int
-xddfunc_max_errors_to_print(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_max_errors_to_print(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	int errors;
 
@@ -2242,7 +2354,7 @@ xddfunc_max_errors_to_print(xdd_plan_t *planp, int32_t argc, char *argv[], uint3
 /*----------------------------------------------------------------------------*/
 // Set the maximum runtime priority
 int
-xddfunc_maxpri(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_maxpri(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	xgp->global_options |= GO_MAXPRI;
     return(1);
@@ -2256,20 +2368,17 @@ xddfunc_maxpri(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // requests will be calculated at a later time.
 //
 int
-xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
     target_data_t *tdp;
 	uint64_t mbytes;
-	int* parse_error = 0;
-
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+	int parse_error = 0;
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
-	mbytes = xddfunc_parse_size_with_units(argv[args+1], "passoffset", parse_error);
+	mbytes = xddfunc_parse_size_with_units(argv[args+1], "passoffset", &parse_error);
 	if (parse_error)
 	{
 		fprintf(stderr, "%s: Invalid mbytes size: %ld. This value must be greater than 0\n",
@@ -2278,8 +2387,8 @@ xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		return (-1);
 	}
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_bytes = mbytes * 1024 * 1024;
@@ -2301,15 +2410,12 @@ xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_memalign(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_memalign(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
 	int32_t align;
     target_data_t *tdp;
-
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -2317,8 +2423,8 @@ xddfunc_memalign(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 
 	align = atoi(argv[args+1]);
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_mem_align = align;
@@ -2339,13 +2445,15 @@ xddfunc_memalign(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
 // Set the  no mem lock and no proc lock flags
 int
-xddfunc_minall(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_minall(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int status;
 
 	if (flags & XDD_PARSE_PHASE2) {
-		status = xddfunc_nomemlock(planp,1,0,flags);
-		status += xddfunc_noproclock(planp,1,0,flags);
+		status = xddfunc_nomemlock(planp, 1, 0, flags, -1);
+		status += xddfunc_noproclock(planp, 1, 0, flags, -1);
+		status = xddfunc_nomemlock(planp, 1, 0, flags, -1);
+		status += xddfunc_noproclock(planp, 1, 0, flags, -1);
 		if (status < 2)
 			return(0);
 		else return(1);
@@ -2356,14 +2464,14 @@ xddfunc_minall(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Set up a queue thread for the specified target to act as an alternate
 // path to the main target device
 int
-xddfunc_multipath(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_multipath(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	fprintf(stderr,"multipath not implemented\n");
 	return(1);
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_nobarrier(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_nobarrier(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (flags & XDD_PARSE_PHASE2)
 		xgp->global_options |= GO_NOBARRIER;
@@ -2372,7 +2480,7 @@ xddfunc_nobarrier(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
 // Set the no memory lock flag
 int
-xddfunc_nomemlock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_nomemlock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (flags & XDD_PARSE_PHASE2)
 		xgp->global_options |= GO_NOMEMLOCK;
@@ -2382,20 +2490,21 @@ xddfunc_nomemlock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // No Ordering - Turn off Loose and Serial ordering of Worker Thread I/O
 // aka -no
 int
-xddfunc_noordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_noordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
     // At this point the "target_number" is valid
-	if (target_number >= 0) {
+	if (target >= 0) {
 		/* Unset the Loose and Serial Ordering Opetions for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options &= ~TO_ORDERING_STORAGE_LOOSE;
@@ -2419,7 +2528,7 @@ xddfunc_noordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 /*----------------------------------------------------------------------------*/
 // Set the no process lock flag
 int
-xddfunc_noproclock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_noproclock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (flags & XDD_PARSE_PHASE2)
 		xgp->global_options |= GO_NOPROCLOCK;
@@ -2432,20 +2541,17 @@ xddfunc_noproclock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 // This will set tdp->cpumask to the processors found in the NUMA domain passed
 //
 int
-xddfunc_numactl(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_numactl(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int 		args, i;
-	int 		target_number;
+	int 		args = 0;
+	int 		i;
 	target_data_t 		*tdp;
-
-	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-	if (args < 0) return(-1);
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	if (target_number >= 0) { /* Set this option value for a specified target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specified target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 		xdd_set_target_cpu_mask(tdp, argv[args+1]);
 		return(args+2);
@@ -2472,15 +2578,12 @@ xddfunc_numactl(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // bytes to transfer will be calculated at a later time.
 //
 int
-xddfunc_numreqs(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_numreqs(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int 		args, i;
-	int 		target_number;
+	int 				args = 0;
+	int 				i;
 	target_data_t 		*tdp;
-	int64_t 	numreqs;
-
-	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-	if (args < 0) return(-1);
+	int64_t 			numreqs;
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -2492,8 +2595,8 @@ xddfunc_numreqs(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			(long long)numreqs);
 		return(0);
 	}
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 		tdp->td_numreqs = numreqs;
 		tdp->td_bytes = 0; // reset tdp->td_bytes
@@ -2516,15 +2619,12 @@ xddfunc_numreqs(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
 // Seconds to delay between individual operations
 int
-xddfunc_operationdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_operationdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int 	args, i;
-    int 	target_number;
+    int 	args = 0;
+	int		i;
     target_data_t 	*tdp;
 	int 	operationdelay;
-
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -2536,8 +2636,8 @@ xddfunc_operationdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 				operationdelay);
             return(0);
 	}
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 		tdp->td_op_delay = operationdelay;
         return(args+2);
@@ -2559,16 +2659,16 @@ xddfunc_operationdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 // Specify the operation to perform - read or write
 // Arguments: -op [target #] read|write
 int
-xddfunc_operation(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_operation(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int 	args, i;
-    int 	target_number;
+    int 	args = 0;
+	int 	i;
     target_data_t 	*tdp;
 	char	*opname;
 	double 	rwratio;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -2587,8 +2687,8 @@ xddfunc_operation(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			opname);
 			return(0);
 	}
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_rwratio = rwratio;
@@ -2610,10 +2710,10 @@ xddfunc_operation(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Specify the ordering method to apply to I/O
 // Arguments: -ordering [target #] <storage | network | both>  <serial | loose | none>
 int
-xddfunc_ordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_ordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int			args, i;
-    int			target_number;
+    int			args = 0;
+	int			i;
     target_data_t		*tdp;
 	char		*thing;
 	char		network_ordering = 0;
@@ -2625,8 +2725,8 @@ xddfunc_ordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	char		no_network_ordering = 0;
 	char		no_storage_ordering = 0;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -2672,8 +2772,8 @@ xddfunc_ordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			return(0);
 	}
 	// At this point the "order" variable has the proper flags OR'd into it so just or "order" into the target options for either a specific target or all targets
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		if (serial_storage_ordering) {
@@ -2731,7 +2831,7 @@ xddfunc_ordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 } // End of xddfunc_ordering()
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_output(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_output(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 
 	if (argc <= 1) {
@@ -2751,7 +2851,7 @@ xddfunc_output(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_output_format(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_output_format(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 
 	if (argc <= 1) {
@@ -2781,7 +2881,7 @@ xddfunc_output_format(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t fl
 /*----------------------------------------------------------------------------*/
 // Seconds to delay between passes
 int
-xddfunc_passdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_passdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 
 	if (argc <= 1) {
@@ -2800,7 +2900,7 @@ xddfunc_passdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_passes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_passes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	int	passes;
 
@@ -2826,25 +2926,26 @@ xddfunc_passes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Arguments: -passoffset [target #] #
 //
 int
-xddfunc_passoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_passoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 	uint64_t pass_offset;
-	int* parse_error = 0;
+	int parse_error = 0;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	pass_offset = xddfunc_parse_size_with_units(argv[args+1], "passoffset", parse_error);
+	pass_offset = xddfunc_parse_size_with_units(argv[args+1], "passoffset", &parse_error);
 	if (parse_error) return (-1);
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_pass_offset = pass_offset;
@@ -2865,21 +2966,21 @@ xddfunc_passoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 /*----------------------------------------------------------------------------*/
 // This defines the meaning of the Percent CPU values that are displayed.
 int
-xddfunc_percentcpu(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_percentcpu(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args;
-    int target_number;
+    int args = 0;
+    
     target_data_t *tdp;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		/*
@@ -2901,15 +3002,15 @@ xddfunc_percentcpu(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 // Specify the number of bytes to truncate the file size to  target file that is
 // being created. This option may zero-fill for some file systems.
 int
-xddfunc_pretruncate(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_pretruncate(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int         args, i;
-    int         target_number;
+    int         args = 0;
+	int			i;
     target_data_t       *tdp;
     int64_t     pretruncate;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
     if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
         return(0);
@@ -2920,8 +3021,8 @@ xddfunc_pretruncate(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
         return(-1);
     }
 
-    if (target_number >= 0) { /* Set this option value for a specific target */
-        tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+    if (target >= 0) { /* Set this option value for a specific target */
+        tdp = xdd_get_target_datap(planp, target, argv[0]);
         if (tdp == NULL) return(-1);
 
         tdp->td_pretruncate= pretruncate;
@@ -2942,7 +3043,7 @@ xddfunc_pretruncate(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 /*----------------------------------------------------------------------------*/
 // Lock the process in memory
 int
-xddfunc_processlock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_processlock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (flags & XDD_PARSE_PHASE2)
 		xgp->global_options |= GO_PLOCK;
@@ -2951,17 +3052,18 @@ xddfunc_processlock(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 /*----------------------------------------------------------------------------*/
 // processor/target assignment
 int
-xddfunc_processor(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_processor(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int32_t args, i;
+	int32_t args = 0;
+	int32_t i;
 	int32_t cpus;
 	int32_t processor_number;
-	int target_number;
+	
 	target_data_t *tdp;
 
 
-	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-	if (args < 0) return(-1);
+	
+	
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -2974,8 +3076,8 @@ xddfunc_processor(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
         return(0);
 	}
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 			tdp->td_processor = processor_number;
         return(args+2);
@@ -2994,23 +3096,24 @@ xddfunc_processor(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_queuedepth(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_queuedepth(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 	int32_t queue_depth;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
 	queue_depth = atoi(argv[args+1]);
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_queue_depth = queue_depth;
@@ -3033,19 +3136,20 @@ xddfunc_queuedepth(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 // Arguments: -randomize [target #]
 
 int
-xddfunc_randomize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_randomize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
     // At this point the "target_number" is valid
-    if (target_number >= 0) { /* Set this option value for a specific target */
-	    tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+    if (target >= 0) { /* Set this option value for a specific target */
+	    tdp = xdd_get_target_datap(planp, target, argv[0]);
 	    if (tdp == NULL) return(-1);
 
 	    tdp->td_target_options |= TO_PASS_RANDOMIZE;
@@ -3072,33 +3176,32 @@ xddfunc_randomize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 //                   port <#>
 //
 int
-xddfunc_readafterwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_readafterwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int			 	i;
-    int				args;
-    int				target_number;
+    int				args = 0;
 	xint_raw_t		*rawp;
     target_data_t	*tdp;
 
 	i = 1;
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
-		if (target_number >= MAX_TARGETS) { /* Make sure the target number is somewhat valid */
+		if (target >= MAX_TARGETS) { /* Make sure the target number is somewhat valid */
 			fprintf(stderr,"%s: Invalid Target Number %d specified for read-after-write option %s\n",
-					xgp->progname, target_number, argv[i+2]);
+					xgp->progname, target, argv[i+2]);
 			return(0);
 		}
 		i += args;  /* skip past the "target <taget number>" */
 	}
 	/* At this point "i" points to the raw "option" argument */
 	if (strcmp(argv[i], "trigger") == 0) { /* set the the trigger type */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			rawp = xdd_get_rawp(tdp);
 			if (rawp == NULL) return(-1);
@@ -3115,9 +3218,9 @@ xddfunc_readafterwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 		}
         return(i+2);
 	} else if (strcmp(argv[i], "lag") == 0) { /* set the lag block count */
-		if (target_number >= 0) {
+		if (target >= 0) {
 			/* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			rawp = xdd_get_rawp(tdp);
 			if (rawp == NULL) return(-1);
@@ -3127,8 +3230,8 @@ xddfunc_readafterwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
         return(i+2);
 	} else if (strcmp(argv[i], "reader") == 0) { /* hostname of the reader for this read-after-write */
 		/* This assumes that these targets are all writers and need to know who the reader is */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			rawp = xdd_get_rawp(tdp);
 			if (rawp == NULL) return(-1);
@@ -3137,8 +3240,8 @@ xddfunc_readafterwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 		}
         return(i+2);
 	} else if (strcmp(argv[i], "port") == 0) { /* set the port number for the socket used by the writer */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			rawp = xdd_get_rawp(tdp);
 			if (rawp == NULL) return(-1);
@@ -3153,7 +3256,7 @@ xddfunc_readafterwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_reallyverbose(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_reallyverbose(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (flags & XDD_PARSE_PHASE2)
 		xgp->global_options |= GO_REALLYVERBOSE;
@@ -3163,17 +3266,18 @@ xddfunc_reallyverbose(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t fl
 /*----------------------------------------------------------------------------*/
 // Re-create the target file between each pass
 int
-xddfunc_recreatefiles(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_recreatefiles(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 	    tdp->td_target_options |= TO_RECREATE;
@@ -3195,17 +3299,18 @@ xddfunc_recreatefiles(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t fl
 /*----------------------------------------------------------------------------*/
 // Re-open the target file between each pass
 int
-xddfunc_reopen(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_reopen(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 	    tdp->td_target_options |= TO_REOPEN;
@@ -3228,15 +3333,15 @@ xddfunc_reopen(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // certain time to complete for either a single target or all targets
 // Arguments: -reportthreshold [target #] #.#
 int
-xddfunc_report_threshold(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_report_threshold(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
     target_data_t *tdp;
     double threshold;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -3246,8 +3351,8 @@ xddfunc_report_threshold(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t
 		fprintf(xgp->errout,"%s: report threshold of %5.2f is not valid. rwratio must be a positive number\n",xgp->progname,threshold);
         return(0);
 	}
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_report_threshold = (nclk_t)(threshold * BILLION);
@@ -3269,24 +3374,23 @@ xddfunc_report_threshold(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t
 /*----------------------------------------------------------------------------*/
 // Control restart operation options
 int
-xddfunc_restart(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_restart(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int 			i;
-    int 			args;
+    int 			args = 0;
     int 			args_index;
-    int 			target_number;
     target_data_t 	*tdp;
 	xint_restart_t	*rp;
 
 
 	args_index = 1;
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		if (target_number >= MAX_TARGETS) { /* Make sure the target number is somewhat valid */
+	if (target >= 0) { /* Set this option value for a specific target */
+		if (target >= MAX_TARGETS) { /* Make sure the target number is somewhat valid */
 			fprintf(stderr,"%s: Invalid Target Number %d specified for seek option %s\n",
-					xgp->progname, target_number, argv[args_index+args]);
+					xgp->progname, target, argv[args_index+args]);
             return(0);
 		}
 		args_index += args;  /* skip past the "target <taget number>" */
@@ -3295,8 +3399,8 @@ xddfunc_restart(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	if (strcmp(argv[args_index], "enable") == 0) { /* Enable the restart option for this command */
 		if(planp->restart_frequency == 0)
 			planp->restart_frequency = 1;
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			rp = xdd_get_restartp(tdp);
 			if (rp == NULL) return(-1);
@@ -3318,8 +3422,8 @@ xddfunc_restart(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	} else if (strcmp(argv[args_index], "file") == 0) { /* Use this filename for the restart file */
 		if(planp->restart_frequency == 0)  // Turn on restart
 			planp->restart_frequency = 1;
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			rp = xdd_get_restartp(tdp);
 			if (rp == NULL) return(-1);
@@ -3340,8 +3444,8 @@ xddfunc_restart(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		return(args_index+2);
 	} else if ((strcmp(argv[args_index], "frequency") == 0) ||
 			   (strcmp(argv[args_index], "freq") == 0)) { // The frequency in seconds to check the threads
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			rp = xdd_get_restartp(tdp);
 			if (rp == NULL) return(-1);
@@ -3364,8 +3468,8 @@ xddfunc_restart(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			   (strcmp(argv[args_index], "offset") == 0)) { /*  Restart from a specific offset */
 		if(planp->restart_frequency == 0)
 			planp->restart_frequency = 1;
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			rp = xdd_get_restartp(tdp);
 			if (rp == NULL) return(-1);
@@ -3422,15 +3526,16 @@ xddfunc_restart(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Set the retry count for each target. The retry count gets inherited by any
 // nsubsequent Worker Threads for the target.
 int
-xddfunc_retry(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_retry(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 	int32_t retry_count;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -3441,8 +3546,8 @@ xddfunc_retry(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		return(0);
 	}
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_retry_count = retry_count;
@@ -3463,7 +3568,7 @@ xddfunc_retry(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
 // round robin processor target assignment
 int
-xddfunc_roundrobin(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_roundrobin(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int32_t cpus;
     int32_t processor_number;
@@ -3495,7 +3600,7 @@ xddfunc_roundrobin(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_runtime(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_runtime(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (argc <= 1) {
 		fprintf(stderr,"%s: Error: No value specified for run time\n", xgp->progname);
@@ -3515,15 +3620,16 @@ xddfunc_runtime(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Specify the read/write ratio for either a single target or all targets
 // Arguments: -rwratio [target #] #.#
 int
-xddfunc_rwratio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_rwratio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
     double rwratio;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -3533,8 +3639,8 @@ xddfunc_rwratio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		fprintf(xgp->errout,"%s: rwratio of %5.2f is not valid. rwratio must be a number between 0.0 and 100.0\n",xgp->progname,rwratio);
         return(0);
 	}
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_rwratio = rwratio;
@@ -3557,22 +3663,22 @@ xddfunc_rwratio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Arguments: -seek [target #] option_name value
 //
 int
-xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int     i;
-    int     args, args_index;
-    int     target_number;
+    int     args = 0;
+	int args_index;
     target_data_t  *tdp;
-	int* parse_error = 0;
+	int parse_error = 0;
 
 	args_index = 1;
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		if (target_number >= MAX_TARGETS) { /* Make sure the target number is somewhat valid */
+	if (target >= 0) { /* Set this option value for a specific target */
+		if (target >= MAX_TARGETS) { /* Make sure the target number is somewhat valid */
 			fprintf(stderr,"%s: Invalid Target Number %d specified for seek option %s\n",
-					xgp->progname, target_number, argv[args_index+args]);
+					xgp->progname, target, argv[args_index+args]);
             return(0);
 		}
 		args_index += args;  /* skip past the "target <taget number>" */
@@ -3582,8 +3688,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		fprintf(stderr, "%s: ERROR: No seek option specified. Please give a valid seek option.\n", xgp->progname);
 		return(-1);
 	} else if (strncmp(argv[args_index], "save", 5) == 0) { /* save the seek information in a file */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options |= SO_SEEK_SAVE;
 			tdp->td_seekhdr.seek_savefile = argv[args_index+1];
@@ -3601,8 +3707,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+2);
 	} else if (strncmp(argv[args_index], "load", 5) == 0) { /* load seek list from "filename" */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options |= SO_SEEK_LOAD;
 			tdp->td_seekhdr.seek_loadfile = argv[args_index+1];
@@ -3620,8 +3726,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+2);
 	} else if (strncmp(argv[args_index], "disthist", 9) == 0) { /*  Print a Distance Histogram */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options |= SO_SEEK_DISTHIST;
 			tdp->td_seekhdr.seek_NumDistHistBuckets = atoi(argv[args_index+1]);
@@ -3639,8 +3745,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+2);
 	} else if (strncmp(argv[args_index], "seekhist", 9) == 0) { /* Print a Seek Histogram */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options |= SO_SEEK_SEEKHIST;
 			tdp->td_seekhdr.seek_NumSeekHistBuckets = atoi(argv[args_index+1]);
@@ -3658,8 +3764,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+2);
 	} else if (strncmp(argv[args_index], "sequential", 11) == 0) { /*  Sequential seek list option */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options &= ~SO_SEEK_RANDOM;
 			tdp->td_seekhdr.seek_pattern = "sequential";
@@ -3677,8 +3783,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+1);
 	} else if (strncmp(argv[args_index], "random", 7) == 0) { /*  Random seek list option */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options |= SO_SEEK_RANDOM;
 			tdp->td_seekhdr.seek_pattern = "random";
@@ -3696,8 +3802,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+1);
 	} else if (strncmp(argv[args_index], "stagger", 8) == 0) { /*  Staggered seek list option */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options |= SO_SEEK_STAGGER;
 			tdp->td_seekhdr.seek_pattern = "staggered";
@@ -3705,7 +3811,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			if (argv[args_index+1] == NULL) tdp->td_seekhdr.seek_stride = 1;
 			else 
 			{
-				tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride", parse_error);
+				tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride", &parse_error);
 				if (parse_error) return (-1);
 			}
 		} else {  /* set option for all targets */
@@ -3719,7 +3825,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 					if (argv[args_index+1] == NULL) tdp->td_seekhdr.seek_stride = 1;
 					else 
 					{
-						tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride", parse_error);
+						tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride", &parse_error);
 						if (parse_error) return (-1);
 					}
 					i++;
@@ -3729,10 +3835,10 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+2);
 	} else if (strncmp(argv[args_index], "interleave", 11) == 0) { /* set the interleave for sequential seek locations */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
-			tdp->td_seekhdr.seek_interleave = xddfunc_parse_size_with_units(argv[args_index+1], "interleave", parse_error);
+			tdp->td_seekhdr.seek_interleave = xddfunc_parse_size_with_units(argv[args_index+1], "interleave", &parse_error);
 			if (parse_error) return (-1);
 			tdp->td_seekhdr.seek_pattern = "interleaved";
 		} else {  /* set option for all targets */
@@ -3740,7 +3846,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 				tdp = planp->target_datap[0];
 				i = 0;
 				while (tdp) {
-					tdp->td_seekhdr.seek_interleave = xddfunc_parse_size_with_units(argv[args_index+1], "interleave", parse_error);
+					tdp->td_seekhdr.seek_interleave = xddfunc_parse_size_with_units(argv[args_index+1], "interleave", &parse_error);
 					if (parse_error) return (-1);
 					tdp->td_seekhdr.seek_pattern = "interleaved";
 					i++;
@@ -3750,8 +3856,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+2);
 	} else if (strncmp(argv[args_index], "none", 5) == 0) { /* no seeking at all */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_options |= SO_SEEK_NONE;
 			tdp->td_seekhdr.seek_pattern = "none";
@@ -3769,17 +3875,17 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+1);
 	} else if (strncmp(argv[args_index], "range", 6) == 0) { /* set the range of seek locations */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
-			tdp->td_seekhdr.seek_range = xddfunc_parse_size_with_units(argv[args_index+1], "range", parse_error);
+			tdp->td_seekhdr.seek_range = xddfunc_parse_size_with_units(argv[args_index+1], "range", &parse_error);
 			if (parse_error) return (-1);
 		} else {  /* set option for all targets */
 			if (flags & XDD_PARSE_PHASE2) {
 				tdp = planp->target_datap[0];
 				i = 0;
 				while (tdp) {
-					tdp->td_seekhdr.seek_range = xddfunc_parse_size_with_units(argv[args_index+1], "range", parse_error);
+					tdp->td_seekhdr.seek_range = xddfunc_parse_size_with_units(argv[args_index+1], "range", &parse_error);
 					if (parse_error) return (-1);
 					i++;
 					tdp = planp->target_datap[i];
@@ -3788,8 +3894,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+2);
 	} else if (strncmp(argv[args_index], "seed", 5) == 0) { /* set the seed for random seek locations */
-		if (target_number >= 0) {  /* set option for specific target */
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {  /* set option for specific target */
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_seekhdr.seek_seed = atoi(argv[args_index+1]);
 		} else {  /* set option for all targets */
@@ -3815,19 +3921,20 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Arguments: -serialordering [target #]
 // aka -nso
 int
-xddfunc_serialordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_serialordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
     // At this point the "target_number" is valid
-	if (target_number >= 0) { /* Set this option for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options |= TO_ORDERING_STORAGE_SERIAL;
@@ -3849,7 +3956,7 @@ xddfunc_serialordering(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t f
 } // End of  xddfunc_serialordering()
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_setup(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_setup(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	int status;
 
@@ -3864,19 +3971,20 @@ xddfunc_setup(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Specify the use of SCSI Generic I/O for a single target or for all targets
 // Arguments: -sgio [target #]
 int
-xddfunc_sgio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_sgio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
     // At this point the "target_number" is valid
-	if (target_number >= 0) { /* Set this option for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options |= TO_SGIO;
@@ -3896,19 +4004,20 @@ xddfunc_sgio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_sharedmemory(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_sharedmemory(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
     // At this point the "target_number" is valid
-	if (target_number >= 0) { /* Set this option for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options |= TO_SHARED_MEMORY;
@@ -3929,12 +4038,13 @@ xddfunc_sharedmemory(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t fla
 /*----------------------------------------------------------------------------*/
 // single processor scheduling
 int
-xddfunc_singleproc(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_singleproc(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int32_t cpus;
     int32_t processor_number;
-    int32_t args, i;
-    int target_number;
+    int32_t args = 0;
+	int32_t i;
+    
     target_data_t *tdp;
 
 
@@ -3945,8 +4055,8 @@ xddfunc_singleproc(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 		return(-1);
 	}
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	processor_number = atoi(argv[args+1]);
 	if ((processor_number < 0) || (processor_number >= cpus)) {
@@ -3955,8 +4065,8 @@ xddfunc_singleproc(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 		return(0);
 	}
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 		tdp->td_processor = processor_number;
 		return(args+1);
@@ -3992,17 +4102,18 @@ xddfunc_singleproc(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 // See also: -targetstartdelay (aka xddfunc_targetstartdelay)
 //
 int
-xddfunc_startdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_startdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     double start_delay;
     nclk_t start_delay_psec;
     target_data_t *tdp;
 
 
-	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+	
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -4014,8 +4125,8 @@ xddfunc_startdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 		return(0);
 	}
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 		tdp->td_start_delay = start_delay;
 		tdp->td_start_delay_psec = start_delay_psec;
@@ -4040,25 +4151,26 @@ xddfunc_startdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
 // Arguments: -startoffset [target #] #
 //
 int
-xddfunc_startoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_startoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
 	uint64_t start_offset;
     target_data_t *tdp;
-	int* parse_error = 0;
+	int parse_error = 0;
 
 
-	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+	
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	start_offset = xddfunc_parse_size_with_units(argv[args+1], "startoffset", parse_error);
+	start_offset = xddfunc_parse_size_with_units(argv[args+1], "startoffset", &parse_error);
 	if (parse_error) return (-1);
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_start_offset = start_offset;
@@ -4078,7 +4190,7 @@ xddfunc_startoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_starttime(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_starttime(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (argc < 2) { // Not enough arguments in this line
 		fprintf(xgp->errout,"%s: ERROR: Not enough arguments to fully qualify this option: %s\n",
@@ -4112,7 +4224,7 @@ xddfunc_starttime(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 *
 */
 int
-xddfunc_starttrigger(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_starttrigger(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int 			t1,t2;				// Target numbers
     target_data_t 			*tdp1, *tdp2;			// Target Data pointers for the two targets involved
@@ -4200,7 +4312,7 @@ xddfunc_starttrigger(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t fla
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_stoponerror(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_stoponerror(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	xgp->global_options |= GO_STOP_ON_ERROR;
     return(1);
@@ -4208,7 +4320,7 @@ xddfunc_stoponerror(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 /*----------------------------------------------------------------------------*/
 // See description of "starttrigger" option.
 int
-xddfunc_stoptrigger(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_stoptrigger(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int 			t1,  t2;			// Target numbers
     target_data_t 	*tdp1;				// Target Data pointers for the target
@@ -4260,7 +4372,7 @@ xddfunc_stoptrigger(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_syncio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_syncio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	if (argc < 2) { // Not enough arguments in this line
 		fprintf(xgp->errout,"%s: ERROR: Not enough arguments to fully qualify this option: %s\n",
@@ -4273,21 +4385,22 @@ xddfunc_syncio(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_syncwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_syncwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int args, i;
-    int target_number;
+	int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_target_options |= TO_SYNCWRITE;
-		return(3);
+		return(args+1);
 	} else { /* Set option for all targets */
 		if (flags & XDD_PARSE_PHASE2) {
 			tdp = planp->target_datap[0];
@@ -4304,26 +4417,35 @@ xddfunc_syncwrite(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
 // Specify a single target name
 int
-xddfunc_target(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_target(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int target_number;
+	int32_t target_number; // Target number created here, not passed
 	target_data_t *tdp;
+	int argi = 2;
 
+	if (argv[1] == NULL) {
+		fprintf(xgp->errout, "%s: ERROR: Not enough arguments for option '%s'\n",
+		    xgp->progname, argv[0]);
+		return(-1);
+	}
+
+	// Phase 1
 	if (flags & XDD_PARSE_PHASE1) {
-		target_number = planp->number_of_targets; // This is the last target + 1
+		// Assign new target number and get data pointer
+		target_number = planp->number_of_targets;
 		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
-		if (tdp == NULL) {
+		if (tdp == NULL)
 			return(-1);
-		}
-
-		if (argv[1] == NULL) {
-			//return(0);
-		}
 
 		tdp->td_target_basename = argv[1];
 		planp->number_of_targets++;
+
+		// Parse possible arguments specified after the target
+		argi = xddfunc_parse_single_target_scoped_options(planp, argc, argv, argi,
+		    flags, target_number);
 	}
-	return(2);
+
+	return(argi);
 }
 /*----------------------------------------------------------------------------*/
 // The target target directory name
@@ -4332,20 +4454,21 @@ xddfunc_target(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Where "directory_name" is the name of the directory to use for the targets
 //
 int
-xddfunc_targetdir(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_targetdir(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-	    tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+	    tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 	    tdp->td_target_directory = argv[args+1];
@@ -4368,10 +4491,10 @@ xddfunc_targetdir(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Arguments: -targetoffset #
 //
 int
-xddfunc_targetoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_targetoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int* parse_error = 0;
-	planp->target_offset = xddfunc_parse_size_with_units(argv[1], "targetoffset", parse_error);
+	int parse_error = 0;
+	planp->target_offset = xddfunc_parse_size_with_units(argv[1], "targetoffset", &parse_error);
 	if (parse_error) return (-1);
     return(2);
 }
@@ -4390,67 +4513,61 @@ xddfunc_targetoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t fla
 // "-targets 3 /dev/hd1 /dev/hd1 /dev/hd1". This is just shorthand.
 //
 int
-xddfunc_targets(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_targets(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int i,j,k;
-	int status;
+	int i, j, k;
+	int ext;
 	target_data_t *tdp;
 
+	// Null operand
 	if (argv[1] == NULL) {
-		fprintf(xgp->errout,"%s ERROR: Target operand is NULL\n",xgp->progname);
-		return (-1);
+		fprintf(xgp->errout, "%s ERROR: Target operand is NULL\n", xgp->progname);
+		return(-1);
 	}
 
+	// Negative operand
+	else if (strtol(argv[1], NULL, 0) < 0)
+	{
+		fprintf(xgp->errout,
+			"%s: ERROR in '%s': number of targets cannnot be negative: %s\n", xgp->progname, argv[0], argv[1]);
+		return(-1);
+	}
+
+	// Phase 1
 	if (flags & XDD_PARSE_PHASE1) {
-		k = planp->number_of_targets;  // Keep the current number of targets we have
-		planp->number_of_targets = atoi(argv[1]); // get the number of targets to add to the list
-		if (planp->number_of_targets < 0) { // Set all the target names to the single name specified
-			// Check to see if the target name is actually an "option" - this may be a syntax error on the command line
-			if (*argv[2] == '-') {
-				status = xdd_check_option(argv[2]);
-				if (status != 0) {
-					fprintf(xgp->errout,"%s: syntax error in '%s' specification: target name cannot be an xdd 'option': %s\n",
-						xgp->progname, argv[0], argv[2]);
-					return(-1);
-				}
-			}
-			i = 3; // Set for the return value
-			planp->number_of_targets *= -1; // make this a positive number
-			planp->number_of_targets += k;  // add in the previous number of targets
-			for (j=k; j<planp->number_of_targets; j++) { // This will add targets to the end of the current list of targets
-				// Call xdd_get_target_datap() for each target and put the same target name in each Target Data
-				// Make sure the Target Data for this target exists - if it does not, the xdd_get_target_datap() subroutine will create one
-				tdp = xdd_get_target_datap(planp, j, argv[0]);
-				if (tdp == NULL) return(-1);
+		k = planp->number_of_targets; // current targets
+		planp->number_of_targets = atoi(argv[1]); // new targets
+		
+		i = 2;
+		planp->number_of_targets += k;
 
-				tdp->td_target_basename = argv[2];
-				if (strcmp(tdp->td_target_basename,"null") == 0)
-					tdp->td_target_options |= TO_NULL_TARGET;
-			} // end of FOR loop that places a single target name on each of the associated Target Data
-		} else { // Set all target names to the appropriate name
-			i = 2; // start with the third argument
-			planp->number_of_targets += k;  // add in the previous number of targets
-			for (j=k; j<planp->number_of_targets; j++) { // This will add targets to the end of the current list of targets
-				// Make sure the Target Data for this target exists - if it does not, the xdd_get_target_datap() subroutine will create one
-				tdp = xdd_get_target_datap(planp, j, argv[0]);
-				if (tdp == NULL) return(-1);
-				tdp->td_target_basename = argv[i];
-				if (strcmp(tdp->td_target_basename,"null") == 0)
-					tdp->td_target_options |= TO_NULL_TARGET;
-				i++;
-			}
+		// For each target - current and new
+		for (j = k; j < planp->number_of_targets; j++) {
+			// Get data pointer and assign the basename
+			tdp = xdd_get_target_datap(planp, j, argv[0]);
+			if (tdp == NULL)
+				return(-1);
+			tdp->td_target_basename = argv[i];
+			if (strncmp(tdp->td_target_basename, "null", 5) == 0)
+				tdp->td_target_options |= TO_NULL_TARGET;
+			i++;
 		}
-		return(i);
-	} else { // Phase 2 we need to figure out how many targets are specified but not to process them
-		k = atoi(argv[1]); // get the number of targets to add to the list
-		if (k < 0) { // Set all the target names to the single name specified
-			i = 3; // Set for the return value
-		} else { // Set all target names to the appropriate name
-			i = k+2; // start with the third argument
-		}
-		return(i);
+
+		// After target names, parse extra options specified for these targets
+		ext = xddfunc_parse_multi_target_scoped_options(planp, argc, argv, i, flags,
+		    k, planp->number_of_targets);
+		return(ext);
 	}
+
+	/* Phase 2: consume same scoped tokens; handler idx unused for token count */
+	i = strtol(argv[1], NULL, 0);
+	ext = i + 2;
+	k = 0;
+	
+	ext = xddfunc_parse_multi_target_scoped_options(planp, argc, argv, ext, flags, k, planp->number_of_targets);
+	return(ext);
 }
+
 /*----------------------------------------------------------------------------*/
 // The target start delay function will set the "start delay" time for all
 // targets or for a specific target if specified.
@@ -4472,16 +4589,13 @@ xddfunc_targets(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // See also: -startdelay (aka xddfunc_startdelay)
 //
 int
-xddfunc_targetstartdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_targetstartdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
     double start_delay;
     nclk_t start_delay_psec;
     target_data_t *tdp;
-
-	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -4493,11 +4607,11 @@ xddfunc_targetstartdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t
 		return(0);
 	}
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
-		tdp->td_start_delay = (double)(start_delay * target_number);
-		tdp->td_start_delay_psec = start_delay_psec * target_number;
+		tdp->td_start_delay = (double)(start_delay * target);
+		tdp->td_start_delay_psec = start_delay_psec * target;
 		return(args+2);
 	} else {/* Set option for all targets */
 		if (flags & XDD_PARSE_PHASE2) {
@@ -4518,10 +4632,11 @@ xddfunc_targetstartdelay(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t
 // Arguments: -throttle [target #] bw|ops|var #.#
 //
 int
-xddfunc_throttle(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_throttle(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     char *what;
     double value;
     target_data_t *tdp;
@@ -4529,14 +4644,14 @@ xddfunc_throttle(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	xint_throttle_t	*throtp;
 
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 	if (argc < 3) {
 		fprintf(xgp->errout,"%s: ERROR: not enough arguments specified for the option '-throttle'\n",xgp->progname);
 		return(0);
 	}
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		what = argv[args+1];
@@ -4649,16 +4764,17 @@ xddfunc_throttle(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 } // End of xddfunc_throttle()
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_timelimit(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_timelimit(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-    int args, i;
-    int target_number;
+    int args = 0;
+	int  i;
+    
     target_data_t *tdp;
 	double	time_limit;
 	nclk_t	time_limit_ticks;
 
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
@@ -4670,8 +4786,8 @@ xddfunc_timelimit(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	}
 	time_limit_ticks = (nclk_t)(time_limit * BILLION);
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+	if (target >= 0) { /* Set this option value for a specific target */
+		tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL) return(-1);
 
 		tdp->td_time_limit = time_limit;
@@ -4693,14 +4809,14 @@ xddfunc_timelimit(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_timerinfo(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_timerinfo(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	xgp->global_options |= GO_TIMER_INFO;
     return(1);
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_timeserver(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_timeserver(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int i;
 
@@ -4732,35 +4848,36 @@ xddfunc_timeserver(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
  // -ts on|off|detailed|summary|oneshot
  //     output filename
 int
-xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	int i;
-	int args, args_index;
-	int target_number;
+	int args = 0;
+	int  args_index;
+	
 	target_data_t *tdp;
 
 
 	args_index = 1;
-	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-	if (args < 0) return(-1);
+	
+	
 
 	if (argc < 2) {
 		fprintf(xgp->errout,"%s: ERROR: not enough arguments specified for the option '-timestamp'\n",xgp->progname);
 		return(0);
 	}
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
+	if (target >= 0) { /* Set this option value for a specific target */
 		args_index += args;
-		if (target_number >= MAX_TARGETS) { /* Make sure the target number is someewhat valid */
+		if (target >= MAX_TARGETS) { /* Make sure the target number is someewhat valid */
 			fprintf(stderr,"%s: Invalid Target Number %d specified for time stamp option %s\n",
-				xgp->progname, target_number, argv[args_index]);
+				xgp->progname, target, argv[args_index]);
 			return(0);
 		}
 	}
 	/* At this point "args_index" indexes to the ts "option" argument */
 	if (strcmp(argv[args_index], "on") == 0) { /* set the time stamp reporting option */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= (TS_ON | TS_ALL);
 		} else {  /* set option for all targets */
@@ -4776,8 +4893,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+1);
 	} else if (strcmp(argv[args_index], "off") == 0) { /* Turn off the time stamp reporting option */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options &= ~TS_ON; /* Turn OFF time stamping */
 		} else {  /* set option for all targets */
@@ -4793,8 +4910,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+1);
 	} else if (strcmp(argv[args_index], "wrap") == 0) { /* Turn on the TS Wrap option */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= TS_WRAP;
 		} else {  /* set option for all targets */
@@ -4810,8 +4927,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+1);
 	} else if (strcmp(argv[args_index], "oneshot") == 0) { /* Turn on the TS Wrap option */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= TS_ONESHOT;
 		} else {  /* set option for all targets */
@@ -4832,8 +4949,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			return(0);
 		}
         args_index++;
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_size = atoi(argv[args_index]);
 		} else {  /* set option for all targets */
@@ -4854,8 +4971,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			return(0);
 		}
         args_index++;
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= (TS_ON | TS_TRIGTIME);
 			tdp->td_ts_table.ts_trigtime = atoll(argv[args_index]);
@@ -4878,8 +4995,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			return(0);
 		}
 		args_index++;
-        if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+        if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= (TS_ON | TS_TRIGOP);
 			tdp->td_ts_table.ts_trigop = atoi(argv[args_index]);
@@ -4897,8 +5014,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+1);
 	} else if (strcmp(argv[args_index], "normalize") == 0) { /* set the time stamp Append Output File  reporting option */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= ((TS_ON | TS_ALL) | TS_NORMALIZE);
 		} else {  /* set option for all targets */
@@ -4919,8 +5036,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			return(0);
 		}
 		args_index++;
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= (TS_ON | TS_ALL | TS_APPEND | TS_DETAILED | TS_SUMMARY);
 		} else {  /* set option for all targets */
@@ -4937,8 +5054,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		planp->ts_output_filename_prefix = argv[args_index];
 		return(args_index+1);
 	} else if (strcmp(argv[args_index], "append") == 0) { /* set the time stamp Append Output File  reporting option */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= (TS_ON | TS_ALL | TS_APPEND | TS_DETAILED | TS_SUMMARY);
 		} else {  /* set option for all targets */
@@ -4955,8 +5072,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		return(args_index+1);
 	} else if (strcmp(argv[args_index], "dump") == 0) { /* dump a binary stimestamp file to "filename" */
         args_index++;
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= ((TS_ON | TS_ALL) | TS_DUMP);
 		} else {  /* set option for all targets */
@@ -4973,8 +5090,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		planp->ts_binary_filename_prefix = argv[args_index];
 		return(args_index+1);
 	} else if (strcmp(argv[args_index], "summary") == 0) { /* set the time stamp SUMMARY reporting option */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= ((TS_ON | TS_ALL) | TS_SUMMARY);
 		} else {  /* set option for all targets */
@@ -4990,8 +5107,8 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+1);
 	} else if (strcmp(argv[args_index], "detailed") == 0) { /* set the time stamp DETAILED reporting option */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_ts_table.ts_options |= ((TS_ON | TS_ALL) | TS_DETAILED | TS_SUMMARY);
 		} else {  /* set option for all targets */
@@ -5012,31 +5129,32 @@ xddfunc_timestamp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
  // -verify location | contents
 int
-xddfunc_verify(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_verify(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     int i;
-    int args, args_index;
-    int target_number;
+    int args = 0;
+	int  args_index;
+    
     target_data_t *tdp;
 
     args_index = 1;
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
+    
+    
 
 	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
 		return(0);
 
-	if (target_number >= 0) { /* Set this option value for a specific target */
+	if (target >= 0) { /* Set this option value for a specific target */
         args_index += args;
-		if (target_number >= MAX_TARGETS) { /* Make sure the target number is someewhat valid */
+		if (target >= MAX_TARGETS) { /* Make sure the target number is someewhat valid */
 			fprintf(stderr,"%s: Invalid Target Number %d specified for verify option %s\n",
-					xgp->progname, target_number, argv[args_index+1]);
+					xgp->progname, target, argv[args_index+1]);
             return(0);
 		}
 	}
     if (strcmp(argv[args_index], "contents") == 0) { /*  Verify the contents of the buffer */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_target_options |= TO_VERIFY_CONTENTS;
 		} else {  /* set option for all targets */
@@ -5052,8 +5170,8 @@ xddfunc_verify(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(args_index+1);
 	} else if (strcmp(argv[args_index], "location") == 0) { /*  Verify the buffer location */
-		if (target_number >= 0) {
-			tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		if (target >= 0) {
+			tdp = xdd_get_target_datap(planp, target, argv[0]);
 			if (tdp == NULL) return(-1);
 			tdp->td_target_options |= TO_VERIFY_LOCATION;
 			tdp->td_dpp->data_pattern_options |= DP_SEQUENCED_PATTERN;
@@ -5077,21 +5195,21 @@ xddfunc_verify(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_unverbose(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_unverbose(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	xgp->global_options &= ~GO_VERBOSE;
     return(1);
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_verbose(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_verbose(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
 	xgp->global_options |= GO_VERBOSE;
     return(1);
 }
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_version(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_version(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
     fprintf(stdout,"%s: Version %s\n",xgp->progname, PACKAGE_VERSION);
     exit(XDD_RETURN_VALUE_SUCCESS);
@@ -5119,15 +5237,14 @@ xddfunc_currently_undefined_option(char *sp) {
 
 /*----------------------------------------------------------------------------*/
 int
-xddfunc_xni(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_xni(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int args;
-	int target_number;
+	int args = 0;
+	
 	char* xni_mode_str = 0;
 	xni_protocol_t* xni_proto = 0;
 
-	args = xdd_parse_target_number(planp, argc, &argv[0],
-								   flags, &target_number);
+	
 	if (args < 0)
 		return(-1);
 
@@ -5149,9 +5266,9 @@ xddfunc_xni(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	planp->plan_options |= PLAN_ENABLE_XNI;
 	printf("XNI enabled.\n");
 	/* Add the XNI mode to relevant targets */
-	if (target_number >= 0) {
+	if (target >= 0) {
 		/* Set this option value for a specific target */
-		target_data_t *tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		target_data_t *tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL)
 			return(-1);
 		tdp->xni_pcl = *xni_proto;
@@ -5172,14 +5289,13 @@ xddfunc_xni(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 } // End of xddfunc_xni()
 
 int
-xddfunc_ibdevice(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_ibdevice(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags, int32_t target)
 {
-	int args;
-	int target_number;
+	int args = 0;
+	
 	char* ibdev = NULL;
 
-	args = xdd_parse_target_number(planp, argc, &argv[0],
-								   flags, &target_number);
+	
 	if (args < 0)
 		return(-1);
 
@@ -5190,9 +5306,9 @@ xddfunc_ibdevice(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	ibdev = argv[args + 1];
 
 	/* Set the device name for the relevant targets */
-	if (target_number >= 0) {
+	if (target >= 0) {
 		/* Set this option value for a specific target */
-		target_data_t *tdp = xdd_get_target_datap(planp, target_number, argv[0]);
+		target_data_t *tdp = xdd_get_target_datap(planp, target, argv[0]);
 		if (tdp == NULL)
 			return(-1);
 		tdp->xni_ibdevice = ibdev;
