@@ -36,13 +36,6 @@ xdd_func_t  xdd_func[] = {
             {"    Specifies the size of a single 'block'.\n",
             0,0,0,0},
 			0},
-    {"bytes",  "b",
-            xddfunc_bytes,
-            1,
-            "  -bytes [target <target#>] <#>\n",
-            {"    Specifies the number of bytes to transfer during a single pass\n",
-            0,0,0,0},
-			0},
     {"combinedout", "combo",
             xddfunc_combinedout,
             1,
@@ -169,13 +162,10 @@ xdd_func_t  xdd_func[] = {
     {"heartbeat", "hb",
             xddfunc_heartbeat,
             1,
-            "  -heartbeat # | ops | bytes | kbytes | mbytes | gbytes | percent | bw | iops | et | lf | tod | elapsed | target | hostname | output <filename> | ignorerestart\n",
+            "  -heartbeat # | ops | bytes | size | percent | bw | iops | et | lf | tod | elapsed | target | hostname | output <filename> | ignorerestart\n",
             {"    Will print out heartbeat information every # seconds \n\
  			     'operations' | 'ops' - current number of operations complete \n\
-                 'bytes' | 'b' -  current bytes transfered \n\
-                 'kbytes' | 'kb' - current Kilo Bytes transfered \n\
-                 'mbytes' | 'mb' - current Mega Bytes transfered \n\
-                 'gbytes' | 'gb' - current Giga Bytes transfered \n\
+                 'size' | 'b' -  current bytes transfered \n\
                  'percent' | 'pct' - percent complete\n\
                  'bandwidth' | 'bw' -  aggregate bandiwdth\n\
                  'iops' - aggregate I/O operations per second\n\
@@ -211,22 +201,15 @@ xdd_func_t  xdd_func[] = {
             {"    Indicates that XDD should start up in Interactive Mode - targets will not start until the 'run' command is given.\n",
             0,0,0,0},
 			0},
-    {"kbytes",  "kb",
-            xddfunc_kbytes,
-            1,
-            "  -kbytes [target <target#>] <#>\n",
-            {"    Specifies the number of 1024-byte blocks to transfer during a single pass\n",
-            0,0,0,0},
-			0},
     {"lockstep", "ls",
             xddfunc_lockstep,
             1,
-            "  -lockstep <mastertarget#> <slavetarget#> <time|op|percent|mbytes|kbytes> # <time|op|percent|mbytes|kbytes># <wait|run> <complete|stop>\n",
+            "  -lockstep <mastertarget#> <slavetarget#> <time|op|percent|size> # <time|op|percent|size># <wait|run> <complete|stop>\n",
             {"  Where 'master_target' is the target that tells the slave when to do something.\n\
         'slave_target' is the target that responds to requests from the master.\n\
         'when' specifies when the master should tell the slave to do something.\n\
   The word 'when' should be replaced with the word: \n\
-        'time', 'op', 'percent', 'mbytes', 'kbytes'.\n\
+        'time', 'op', 'percent', 'size'.\n\
         'howlong' is either the number of seconds, number of operations, ...etc.\n\
         - The interval time in seconds <a floating point number> between task requests from the\n\
           master to the slave. i.e. if this number were 2.3 then the master would request\n\
@@ -239,7 +222,7 @@ xdd_func_t  xdd_func[] = {
         - The number of megabytes <1024*1024 bytes> or the number of kilobytes <1024 bytes>\n\
         'what' is the type of task the slave should perform each time it is requested to perform\n\
           a task by the master. The word 'what' should be replaced by:\n\
-        'time', 'op', 'percent', 'mbytes', 'kbytes'.\n",
+        'time', 'op', 'percent', 'size'.\n",
              "    'howmuch' is either the number of seconds, number of operations, ...etc.\n\
 	    - The amount of time in seconds <a floating point number> the slave should run before\n\
           pausing and waiting for further requests from the master.\n\
@@ -291,13 +274,6 @@ xdd_func_t  xdd_func[] = {
             1,
             "  -maxpri\n",
             {"    Will set the process to maximum priority\n",
-            0,0,0,0},
-			0},
-    {"mbytes", "mb",
-            xddfunc_mbytes,
-            1,
-            "  -mbytes [target <target#>] <#>\n",
-            {"    Specifies the number of 1024*1024-byte blocks to transfer in a single pass\n",
             0,0,0,0},
 			0},
     {"memalign", "mal",
@@ -418,7 +394,7 @@ xdd_func_t  xdd_func[] = {
             xddfunc_passes,
             1,
             "  -passes #\n",
-            {"    Specifies the number of times to read mbytes -or- the number of times to issue 'numreqs' requests\n",
+            {"    Specifies the number of times to read 'size' bytes -or- the number of times to issue 'numreqs' requests\n",
             0,0,0,0},
 			0},
     {"passoffset",  "po",
@@ -606,6 +582,13 @@ xdd_func_t  xdd_func[] = {
              "    Requires the processor number to run on\n",
              0,0,0},
 			0},
+    {"size",  "sz",
+            xddfunc_size,
+            1,
+            "  -size [target <target#>] <#>\n",
+            {"    Specifies the number of bytes to transfer during a single pass\n",
+            0,0,0,0},
+			0},
     {"startdelay", "sd",
             xddfunc_startdelay,
             1,
@@ -632,7 +615,7 @@ xdd_func_t  xdd_func[] = {
     {"starttrigger","st",
             xddfunc_starttrigger,
             1,
-            "  -starttrigger <target#> <target#> <<time|op|percent|mbytes|kbytes> #>\n",
+            "  -starttrigger <target#> <target#> <<time|op|percent|size> #>\n",
             {" ", 0,0,0,0},
 			0},
     {"stoponerror", "soe",
@@ -644,7 +627,7 @@ xdd_func_t  xdd_func[] = {
     {"stoptrigger", "et",
             xddfunc_stoptrigger,
             1,
-            "  -stoptrigger <target#> <target#> <<time|op|percent|mbytes|kbytes> #>\n",
+            "  -stoptrigger <target#> <target#> <<time|op|percent|size> #>\n",
             {" ", 0,0,0,0},
 			0},
     {"syncio", "sio",

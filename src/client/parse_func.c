@@ -206,12 +206,12 @@ xddfunc_blocksize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*----------------------------------------------------------------------------*/
 // Specify the number of Bytes to transfer per pass
 // Arguments: -bytes [target #] #
-// The -bytes/-kbytes/-mbytes option is mutually exclusive with the -numreqs option
+// The -size option is mutually exclusive with the -numreqs option
 // and will reset the tdp->td_numreqs to 0 for all affected targets. The number of
 // requests will be calculated at a later time.
 //
 int
-xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
+xddfunc_size(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 {
 	int args, i;
 	int target_number;
@@ -252,7 +252,7 @@ xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 		}
 		return(2);
 	}
-} // End of xddfunc_bytes()
+} // End of xddfunc_size()
 /*----------------------------------------------------------------------------*/
 int
 xddfunc_combinedout(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
@@ -1557,10 +1557,7 @@ xddfunc_fullhelp(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 /*  The -heartbeat option accepts one argument that is any of the following:
  *      - A positive integer that indicates the number of seconds between beats
  *      - The word "operations" or "ops" to display the current number of operations complete
- *      - The word "bytes" to display the current number of bytes transfered
- *      - The word "kbytes" or "kb" to display the current number of Kilo Bytes transfered
- *      - The word "mbytes" or "mb" to display the current number of Mega Bytes transfered
- *      - The word "gbytes" or "gb" to display the current number of Giga Bytes transfered
+ *      - The word "size" to display the current number of bytes transfered
  *      - The word "percent" or "pct" to display the %complete along with
  *      - The word "bandwidth" or "bw" to display the aggregate bandiwdth
  *      - The word "iops" to display the aggregate I/O operations per second
@@ -1638,17 +1635,8 @@ xddfunc_heartbeat(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	if ((strcmp(sp, "operations") == 0) || (strcmp(sp, "ops") == 0)) { // Report OPERATIONS
 			hb.hb_options |= HB_OPS;
 			return_value = 2;
-	} else if ((strcmp(sp, "bytes") == 0) || (strcmp(sp, "b") == 0)) { // Report Bytes
+	} else if ((strcmp(sp, "size") == 0) || (strcmp(sp, "b") == 0)) { // Report Bytes
 			hb.hb_options |= HB_BYTES;
-			return_value = 2;
-	} else if ((strcmp(sp, "kbytes") == 0) || (strcmp(sp, "kb") == 0)) { // Report KiloBytes
-			hb.hb_options |= HB_KBYTES;
-			return_value = 2;
-	} else if ((strcmp(sp, "mbytes") == 0) || (strcmp(sp, "mb") == 0)) { // Report MegaBytes
-			hb.hb_options |= HB_MBYTES;
-			return_value = 2;
-	} else if ((strcmp(sp, "gbytes") == 0) || (strcmp(sp, "gb") == 0)) { // Report GigaBytes
-			hb.hb_options |= HB_GBYTES;
 			return_value = 2;
 	} else if ((strcmp(sp, "percent") == 0) || (strcmp(sp, "pct") == 0)) { // Report Percent complete
 			hb.hb_options |= HB_PERCENT;
@@ -1826,57 +1814,6 @@ xddfunc_interactive(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
     return(1);
 }
 /*----------------------------------------------------------------------------*/
-// Specify the number of KBytes to transfer per pass (1K=1024 bytes)
-// Arguments: -kbytes [target #] #
-// This will set tdp->td_bytes to the calculated value (kbytes * 1024)
-// The -bytes/-kbytes/-mbytes option is mutually exclusive with the -numreqs option
-// and will reset the tdp->td_numreqs to 0 for all affected targets. The number of
-// requests will be calculated at a later time.
-//
-int
-xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
-{
-    int args, i;
-    int target_number;
-    target_data_t *tdp;
-	uint64_t kbytes;
-	int* parse_error = 0;
-
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
-
-	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
-		return(0);
-
-	kbytes = xddfunc_parse_size_with_units(argv[args+1], "kbytes", parse_error);
-	if (parse_error)
-	{
-		fprintf(stderr, "%s: Invalid kbytes size: %ld. This value must be greater than 0\n",
-				xgp->progname,
-				kbytes);
-		return (-1);
-	}
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
-		if (tdp == NULL) return(-1);
-		tdp->td_bytes = kbytes * 1024;
-		tdp->td_numreqs = 0;
-        return(args+2);
-	} else { // Put this option into all Targets
-			if (flags & XDD_PARSE_PHASE2) {
-				tdp = planp->target_datap[0];
-				i = 0;
-				while (tdp) {
-					tdp->td_bytes = kbytes * 1024;
-					tdp->td_numreqs = 0;
-					i++;
-					tdp = planp->target_datap[i];
-				}
-			}
-        return(2);
-	}
-}
-/*----------------------------------------------------------------------------*/
 /*  -lockstep
 	-ls
 	-lockstepoverlapped
@@ -1891,8 +1828,7 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 *     "time"
 *     "op"
 *     "percent"
-*     "mbytes"
-*     "kbytes"
+*     "size"
 *   "howlong" is either the number of seconds, number of operations, ...etc.
 *       - the interval time in seconds (a floating point number) between task requests from the
 *      master to the slave. i.e. if this number were 2.3 then the master would request
@@ -1908,8 +1844,7 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 *     a task by the master. The word "what" should be replaced by:
 *     "time"
 *     "op"
-*     "mbytes"
-*     "kbytes"
+*     "size"
 *   "howmuch" is either the number of seconds, number of operations, ...etc.
 *       - the amount of time in seconds (a floating point number) the slave should run before
 *      pausing and waiting for further requests from the master.
@@ -2248,58 +2183,6 @@ xddfunc_maxpri(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     return(1);
 }
 /*----------------------------------------------------------------------------*/
-// Specify the number of MBytes to transfer per pass (1M=1024*1024 bytes)
-// Arguments: -mbytes [target #] #
-// This will set tdp->td_bytes to the calculated value (mbytes * 1024*1024)
-// The -bytes/-kbytes/-mbytes option is mutually exclusive with the -numreqs option
-// and will reset the tdp->td_numreqs to 0 for all affected targets. The number of
-// requests will be calculated at a later time.
-//
-int
-xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
-{
-    int args, i;
-    int target_number;
-    target_data_t *tdp;
-	uint64_t mbytes;
-	int* parse_error = 0;
-
-    args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
-    if (args < 0) return(-1);
-
-	if (xdd_parse_arg_count_check(args,argc, argv[0]) == 0)
-		return(0);
-	mbytes = xddfunc_parse_size_with_units(argv[args+1], "passoffset", parse_error);
-	if (parse_error)
-	{
-		fprintf(stderr, "%s: Invalid mbytes size: %ld. This value must be greater than 0\n",
-				xgp->progname,
-				mbytes);
-		return (-1);
-	}
-
-	if (target_number >= 0) { /* Set this option value for a specific target */
-		tdp = xdd_get_target_datap(planp, target_number, argv[0]);
-		if (tdp == NULL) return(-1);
-
-		tdp->td_bytes = mbytes * 1024 * 1024;
-		tdp->td_numreqs = 0;
-        return(args+2);
-	} else { // Put this option into all Targets
-			if (flags & XDD_PARSE_PHASE2) {
-				tdp = planp->target_datap[0];
-				i = 0;
-				while (tdp) {
-					tdp->td_bytes = mbytes * 1024 * 1024;
-					tdp->td_numreqs = 0;
-					i++;
-					tdp = planp->target_datap[i];
-				}
-			}
-        return(2);
-	}
-}
-/*----------------------------------------------------------------------------*/
 int
 xddfunc_memalign(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 {
@@ -2467,7 +2350,7 @@ xddfunc_numactl(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 // Specify the number of requests to run
 // Arguments: -numreqs [target #] #
 // This will set tdp->td_numreqs to the specified value
-// The -numreqs option is mutually exclusive with the -bytes/-kbytes/-mbytes options
+// The -numreqs option is mutually exclusive with the -size options
 // and will reset the tdp->td_bytes to 0 for all affected targets. The number of
 // bytes to transfer will be calculated at a later time.
 //
@@ -4215,6 +4098,7 @@ xddfunc_stoptrigger(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
     xint_triggers_t	*trigp;				// Trigger Stucture pointers for the this target
     char 			*when;				// The "When" to perform a trigger
     double 			tmpf;				// temp
+	int* 			parse_error = 0;		// Error on parse return
 
 
 	if (argc < 5) { // Not enough arguments in this line
@@ -4244,13 +4128,15 @@ xddfunc_stoptrigger(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
 	} else if (strcmp(when,"percent") == 0){ /* get the percentage of operations to wait before triggering the other target */
 		trigp->stop_trigger_percent = atof(argv[4]);
         return(5);
-	} else if (strcmp(when,"mbytes") == 0){ /* get the number of megabytes to wait before triggering the other target */
-		tmpf = atof(argv[4]);
-		trigp->stop_trigger_bytes = (uint64_t)(tmpf * 1024*1024);
-        return(5);
-	} else if (strcmp(when,"kbytes") == 0){ /* get the number of kilobytes to wait before triggering the other target */
-		tmpf = atof(argv[4]);
-		trigp->stop_trigger_bytes = (uint64_t)(tmpf * 1024);
+	} else if (strcmp(when,"size") == 0){ /* get the number of megabytes to wait before triggering the other target */
+		tmpf = xddfunc_parse_size_with_units(argv[4], "bytes", parse_error);
+		if (parse_error)
+		{
+			fprintf(stderr,"%s: Invalid %s qualifer: %s\n",
+				xgp->progname, argv[0], when);
+			return 0;
+		}
+		trigp->stop_trigger_bytes = tmpf;
         return(5);
 	} else {
 		fprintf(stderr,"%s: Invalid %s qualifer: %s\n",
