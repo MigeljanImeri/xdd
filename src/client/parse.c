@@ -133,7 +133,9 @@ xdd_parse(xdd_plan_t *planp, int32_t argc, char *argv[]) {
 	}
 
 	// Build the Target Data Struct substructure for all targets
-	xdd_build_target_data_substructure(planp);
+	if (xdd_build_target_data_substructure(planp) != 0) {
+		fprintf(xgp->errout, "Target init failed.\n");
+	}
 
 } /* end of xdd_parse() */
 /*----------------------------------------------------------------------------*/

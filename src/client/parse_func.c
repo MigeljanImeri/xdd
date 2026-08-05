@@ -168,7 +168,7 @@ xddfunc_blocksize(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     int target_number;
 	uint64_t block_size;
     target_data_t *tdp;
-	int* parse_error = 0;
+	int* parse_error = NULL;
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);
 
@@ -217,7 +217,7 @@ xddfunc_bytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 	int target_number;
 	target_data_t *tdp;
 	uint64_t bytes;
-	int* parse_error = 0;
+	int* parse_error = NULL;
 
 
 	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
@@ -1840,7 +1840,7 @@ xddfunc_kbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     int target_number;
     target_data_t *tdp;
 	uint64_t kbytes;
-	int* parse_error = 0;
+	int* parse_error = NULL;
 
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);
@@ -2262,7 +2262,7 @@ xddfunc_mbytes(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     int target_number;
     target_data_t *tdp;
 	uint64_t mbytes;
-	int* parse_error = 0;
+	int* parse_error = NULL;
 
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);
@@ -2832,7 +2832,7 @@ xddfunc_passoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags
     int target_number;
     target_data_t *tdp;
 	uint64_t pass_offset;
-	int* parse_error = 0;
+	int* parse_error = NULL;
 
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
     if (args < 0) return(-1);
@@ -3563,7 +3563,7 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
     int     args, args_index;
     int     target_number;
     target_data_t  *tdp;
-	int* parse_error = 0;
+	int* parse_error = NULL;
 
 	args_index = 1;
     args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
@@ -3702,7 +3702,8 @@ xddfunc_seek(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 			tdp->td_seekhdr.seek_options |= SO_SEEK_STAGGER;
 			tdp->td_seekhdr.seek_pattern = "staggered";
 			/* Default stride if not passed */
-			if (argv[args_index+1] == NULL) tdp->td_seekhdr.seek_stride = 1;
+			if (argv[args_index+1] == NULL)
+				tdp->td_seekhdr.seek_stride = 1;
 			else 
 			{
 				tdp->td_seekhdr.seek_stride = xddfunc_parse_size_with_units(argv[args_index+1], "stride", parse_error);
@@ -4046,7 +4047,7 @@ xddfunc_startoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flag
     int target_number;
 	uint64_t start_offset;
     target_data_t *tdp;
-	int* parse_error = 0;
+	int* parse_error = NULL;
 
 
 	args = xdd_parse_target_number(planp, argc, &argv[0], flags, &target_number);
@@ -4370,7 +4371,7 @@ xddfunc_targetdir(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 int
 xddfunc_targetoffset(xdd_plan_t *planp, int32_t argc, char *argv[], uint32_t flags)
 {
-	int* parse_error = 0;
+	int* parse_error = NULL;
 	planp->target_offset = xddfunc_parse_size_with_units(argv[1], "targetoffset", parse_error);
 	if (parse_error) return (-1);
     return(2);
