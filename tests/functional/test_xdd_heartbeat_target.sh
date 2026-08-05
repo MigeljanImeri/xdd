@@ -22,7 +22,7 @@ test_file2="${test_dir}/data2"
 touch "${test_file}"
 touch "${test_file2}"
 
-"${XDDTEST_XDD_EXE}" -targets 2 "${test_file}" "${test_file2}" -op target 0 write -op target 1 write -blocksize 1m -numreqs 512 -runtime 2 -hb 1 -hb tgt -hb output "${test_dir}/data3"
+"${XDDTEST_XDD_EXE}" -targets 2 "${test_file}" "${test_file2}" op write -blocksize 1m -numreqs 512 -runtime 2 -hb 1 -hb tgt -hb output "${test_dir}/data3"
 
 # get target numbers
 target=$(grep -m1 tgt "${test_dir}/data3.T0000.csv")
