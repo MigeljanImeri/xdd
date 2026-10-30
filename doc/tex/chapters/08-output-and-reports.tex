@@ -1,0 +1,327 @@
+\newpage
+\section{Output and Reports}\label{output-and-reports}
+
+\subsection{Reporting Options}\label{reporting-options}
+
+The --verbose option will display performance information for each pass within an XDD run along with per-target totals and combined averages. There is also an ``id'' option (--id) that will display a specified string of identification information along with the normal output of the run. If the id string is specified to be ``commandline'' then the entire XDD command line plus all the options will be display. This is useful when running XDD from a shell script to get more qualitative information about the run into the output file.
+
+Since XDD I/O operations can fail due to device failures or option specifications it is possible to generate tremendous numbers of error messages. To avoid filling up output files with too many error messages, the --maxerrors option can be used to limit the number of error messages to display to some small, finite number. Once this number of errors has been reached, I/O operations to that target are halted for that pass.
+
+\subsection{Output Format}\label{output-format}
+
+The ``--outputformat'' option allows the user to specify which variables should be displayed in the output line. For example, given a normal XDD command line with the usual options, it is possible to use the ``-outputformat'' option as follows:
+
+\begin{quote}
+XDD \ldots{} -outputformat ``+PASS+TARGET+BYTESREAD+OPS+READBANDWIDTH''
+\end{quote}
+
+To produce output that would only contain the pass number, target number, bytes ``read'', operations performed, and achieved ``read'' bandwidth.
+
+The following is a list of defined output format identifier strings that can be used. Each format identifier string must begin with a ``+'' as indicated.
+
+\textbf{+WHAT}
+
+\textbf{+PASS}
+
+\textbf{+TARGET}
+
+\textbf{+QUEUE}
+
+\textbf{+BYTESTRANSFERED}
+
+\textbf{+BYTESXFERED}
+
+\textbf{+BYTESREAD}
+
+\textbf{+BYTESWRITTEN}
+
+\textbf{+OPS}
+
+\textbf{+READOPS}
+
+\textbf{+WRITEOPS}
+
+\textbf{+BANDWIDTH}
+
+\textbf{+READBANDWIDTH}
+
+\textbf{+WRITEBANDWIDTH}
+
+\textbf{+IOPS}
+
+\textbf{+READIOPS}
+
+\textbf{+WRITEIOPS}
+
+\textbf{+LATENCY}
+
+\textbf{+ELAPSEDTIME1STOP}
+
+\textbf{+ELAPSEDTIMEPASS}
+
+\textbf{+OVERHEADTIME}
+
+\textbf{+PATTERNFILLTIME}
+
+\textbf{+BUFFERFLUSHTIME}
+
+\textbf{+CPUTIME}
+
+\textbf{+PERCENTCPUTIME}
+
+\textbf{+PERCENTCPU}
+
+\textbf{+USERTIME}
+
+\textbf{+USER}
+
+\textbf{+USRTIME}
+
+\textbf{+SYSTEMTIME}
+
+\textbf{+SYSTEM}
+
+\textbf{+SYSTIME}
+
+\textbf{+PERCENTUSER}
+
+\textbf{+PERCENTUSERTIME}
+
+\textbf{+PERCENTUSR}
+
+\textbf{+PERCENTSYSTEM}
+
+\textbf{+PERCENTSYSTEMTIME}
+
+\textbf{+PERCENTSYS}
+
+\textbf{+OPTYPE}
+
+\textbf{+XFERSIZEBYTES}
+
+\textbf{+XFERSIZEBLOCKS}
+
+\textbf{+XFERSIZEKBYTES}
+
+\textbf{+XFERSIZEMBYTES}
+
+\textbf{+E2EIOTIME}
+
+\textbf{+E2ESRTIME}
+
+\textbf{+E2EPERCENTSRTIME}
+
+\textbf{+E2ELAGTIME}
+
+\textbf{+E2EPERCENTLAGTIME}
+
+\textbf{+E2EFIRSTREADTIME}
+
+\textbf{+E2ELASTWRITETIME}
+
+\textbf{+DELIM}
+
+** Aside from the obvious ones, the ``+DELIM'' can be used to print a specific delimiter between variables that get displayed. The ``+WHAT'' is used to indicate which output line is being displayed: PASS, QThread Average, Target Average, Combined, \ldots etc. All the others are reasonably self-explanatory
+
+The output of XDD comes in several sections. The first section describes the state of options selected for the run that apply to all the targets being tested. The second section of output describes the options that apply to each of the individual targets. The third section contains information about the system that XDD is being run on. \textbf{The fourth section describes the rate information.}
+
+\textbf{IOIOIOIOIOIOIOIOIOIOI XDD version Linux.7.0.0.rc9.012810.Build.0317 based on Linux.7.0.0.rc9.011810.Build.1412 IOIOIOIOIOIOIOIOIOIOIOI}
+
+\textbf{xdd - I/O Performance Inc., US DoE/DoD Extreme Scale Systems Center \textless ESSC\textgreater{} at Oak Ridge National Labs \textless ORNL\textgreater{} - Copyright 1992-2010}
+
+\textbf{XDD DISCLAIMER:}
+
+\textbf{*** \textgreater\textgreater\textgreater\textgreater{} WARNING \textless\textless\textless\textless{}}
+
+\textbf{*** THIS PROGRAM CAN DESTROY DATA}
+
+\textbf{*** USE AT YOUR OWN RISK}
+
+\textbf{*** IOPERFORMANCE and/or THE AUTHORS ARE NOT LIABLE FOR}
+
+\textbf{*** \textgreater\textgreater\textgreater\textgreater{} ANYTHING BAD \textless\textless\textless\textless{}}
+
+\textbf{**** THAT HAPPENS WHEN YOU RUN THIS PROGRAM}
+
+\textbf{...although we will take credit for anything good that happens}
+
+\textbf{but we are not *liable* for that either.}
+
+\textbf{Starting time for this run, Thu Jan 28 03:22:27 2010}
+
+\textbf{ID for this run, \textquotesingle No ID Specified\textquotesingle{}}
+
+\textbf{Maximum Process Priority, disabled}
+
+\textbf{Passes, 1}
+
+\textbf{Pass Delay in seconds, 0}
+
+\textbf{Maximum Error Threshold, 0}
+
+\textbf{Target Offset, 0}
+
+\textbf{I/O Synchronization, 0}
+
+\textbf{Total run-time limit in seconds, 0}
+
+\textbf{Output file name, test-run.txt}
+
+\textbf{CSV output file name, test-run.csv}
+
+\textbf{Error output file name, stderr}
+
+\textbf{Pass synchronization barriers, enabled}
+
+\textbf{Number of Targets, 1}
+
+\textbf{Number of I/O Threads, 1}
+
+\textbf{Computer Name, pod7.ccs.ornl.gov, User Name, tmruwart}
+
+\textbf{OS release and version, Linux 2.6.18-128.1.6.el5 \#1 SMP Wed Apr 1 06:58:14 EDT 2009}
+
+\textbf{Machine hardware type, x86\_64}
+
+\textbf{Number of processors on this system, 8}
+
+\textbf{Page size in bytes, 4096}
+
+\textbf{Number of physical pages, 8241895}
+
+\textbf{Megabytes of physical memory, 32194}
+
+\textbf{Clock Ticks per second, 100}
+
+\textbf{Seconds before starting, 0}
+
+\textbf{\hfill\break
+}
+
+\textbf{Target{[}0{]} Q{[}0{]}, /data/xfs/testfile}
+
+\begin{quote}
+\textbf{Target directory, "./"}
+
+\textbf{Process ID, 2523}
+
+\textbf{Thread ID, 2524}
+
+\textbf{Processor, all/any}
+
+\textbf{Read/write ratio, 0.00 READ, 100.00 WRITE}
+
+\textbf{Throttle in MB/sec, 0.00}
+
+\textbf{Per-pass time limit in seconds, 0}
+
+\textbf{Pass seek randomization, disabled}
+
+\textbf{File write synchronization, disabled}
+
+\textbf{Blocksize in bytes, 4194304}
+
+\textbf{Number of Operations, 16, of, 16, target ops for all qthreads}
+
+\textbf{Start offset, 0, blocks, 0, bytes, 0.000 KBytes, 0.000 MBytes, 0.000 GBytes, 0.000000 TBytes}
+
+\textbf{Total data transfer for this target, 65536, blocks, 67108864, bytes, 65536.000 KBytes, 64.000 MBytes, 0.062 GBytes, 0.000061 TBytes}
+\end{quote}
+
+\textbf{Total data transfer for this QTHREAD, 65536, blocks, 67108864, bytes, 65536.000 KBytes, 64.000 MBytes, 0.062 GBytes, 0.000061 TBytes}
+
+\textbf{Pass Offset, 0, blocks, 0, bytes, 0.000 KBytes, 0.000 MBytes, 0.000 GBytes, 0.000000 TBytes}
+
+\textbf{Seek range, 1048576, blocks, 1073741824, bytes,1048576.000 KBytes,1024.000 MBytes, 1.000 GBytes, 0.000977 TBytes}
+
+\textbf{Seek pattern, sequential}
+
+\textbf{Flushwrite interval, 0}
+
+\textbf{I/O memory buffer is a normal memory buffer}
+
+\textbf{I/O memory buffer alignment in bytes, 4096}
+
+\textbf{Data pattern in buffer,0x00}
+
+\textbf{Data buffer verification is disabled.}
+
+\textbf{Direct I/O, enabled}
+
+\textbf{Preallocation, 0}
+
+\textbf{Queue Depth, 1}
+
+\textbf{Timestamping, enabled for DETAILED SUMMARY}
+
+\textbf{Timestamp ASCII output file name, test-run.target.0000.qthread.0000.csv}
+
+\textbf{Delete file, disabled}
+
+What Pass Target Queue Bytes\_Xfered Ops Elapsed Bandwidth IOPS Latency Pct\_CPU Op\_Type Xfer\_Size
+
+UNITS\textgreater\textgreater{} Number Number Number Bytes \#ops seconds MBytes/s Ops/s millisec percent text bytes
+
+TARGET\_PASS 1 0 1 67108864 16 1.375 48.820 11.640 85.914 0.727 write 4194304
+
+TARGET\_AVERAGE 1 0 1 67108864 16 1.375 48.820 11.640 85.914 0.727 write 4194304
+
+COMBINED 1 1 1 67108864 16 1.375 48.820 11.640 85.914 0.727 write 4194304
+
+Ending time for this run, Thu Jan 28 03:22:28 2010
+
+The default output of XDD is a line of text with the following format
+
+\textbf{What Pass Target Queue Bytes\_Xfered Ops Elapsed Bandwidth IOPS Latency Pct\_CPU Op\_Type Xfer\_Size}
+
+\textbf{\emph{UNITS\textgreater\textgreater{} Number Number Number Bytes \#ops seconds MBytes/s Ops/s millisec percent text} \emph{bytes}}
+
+The first line indicates the variable being reported, the second line provides the \emph{UNITS} for each variable, and the lines beyond that are the variables themselves.
+
+The fields have the following meanings:
+
+\textbf{WHAT} This is an identifier that explains how the results should be interpreted for the given line. The possible values of ``WHAT'' are:
+
+\begin{itemize}
+\item
+  TARGET PASS -- displayed only when the --verbose option is specified. Provides the results for a specific target for a particular pass. The target results are a combined average of all the associated qthreads for the target. The ``Q'' result in this case reflects the total number of qthreads operating on behalf of the target.
+\item
+  QUEUE PASS -- displayed only when the --qthreadinfo option is specified. Provides the results for a specific qthread for a particular pass. The ``Q'' result in this case reflects the specific qthread number relative to zero for this target. For example, if there are 4 qthreads (i.e. --queuedepth 4) then the Q values will range from 0 to 3.
+\item
+  TARGET AVERAGE -- displayed only when the --verbose option is specified. Provides the results for a specific target averaged over all passes in the run.
+\item
+  COMBINED -- Provides the combined results over all targets and qthreads for all passes in a run.
+\end{itemize}
+
+\textbf{PASS} is the target pass number of the specific result. Pass numbers start at 1.
+
+\textbf{Target} is the target number, relative to 0 (zero). A list of the targets and the associated numbers precedes this line of output.
+
+\textbf{Queue} -- see above.
+
+\textbf{Bytes\_Xfered} Is the total number of bytes that were transferred during the XDD run for this target.
+
+\textbf{Ops} is the total number of read or write operations performed on this target.
+
+\textbf{Elapsed} is the number of seconds that elapsed for the current pass in a multi-pass run for the target or qthread being reported.
+
+\textbf{Bandwidth} is the average I/O rate in Mega Bytes per Second where 1 MByte/sec equally 10\textsuperscript{6} bytes per second.
+
+\textbf{IOPS} is the Average number of I/O operations per second for this pass in a multi-pas run.
+
+\textbf{Latency} is the Average time it takes to perform each operation.
+
+\textbf{Pct\_CPU} is the percentage of the CPU that was used by all the qthreads on behalf of this target. This includes system and user time.
+
+\textbf{Op\_type} is either read, write, or mixed.
+
+\textbf{Xfer\_Size} is the *average* transfer size represented as block-size that was used for that target or qthread. Generally this is a constant value for any particular test run.
+
+If the \textbf{--verbose} option is specified then each line has a pass number associated with it and the final output lines report overall averaged values for the Average Rate and Elapsed time. For a Multi-Target run, the sum total of all the targets is presented as the \textbf{Combined} average. For example, if \emph{two} targets are being tested and \emph{each} target performs at an average of 75MB/sec, the Combined average is 150 MB/sec.
+
+\subsection{}\label{section}
+
+\subsection{What the numbers really mean}\label{what-the-numbers-really-mean}
+
+There are several performance values reported. These include the per-pass target results, the individual queue results, the target averages over all passes, and the combined average of all targets over all passes.
+

@@ -1,0 +1,88 @@
+\newpage
+\section{\texorpdfstring{\hfill\break
+Under the Hood}{ Under the Hood}}\label{under-the-hood}
+
+This section is a look at XDD program organization and data structures. This section is primarily here for the author's benefit because his brain is getting old and forgetful.
+
+Starting with XDD6.3 the source code files have been separated out into several categories of source files. The process of moving functions around within the files is mostly complete but further changes may be made in future releases. The rationale behind this change is that some of the source files were getting too large.
+
+\subsection{XDD general operation}\label{xdd-general-operation}
+
+XDD is a command-line driven program. The first thing it does upon invoking it is to parse the command line. If the command line contains the ``-setup'' option, it will parse the command line options from left to right up to the --setup option. It will then parse the setup file options followed by parsing the remaining command line options.
+
+After the all the requested options have been set, the main XDD program will start all the appropriate threads one at a time. Each thread will go through it initialization phase which includes the following:
+
+\begin{itemize}
+\item
+  Open the target and prepare it for access
+\item
+  Generate the list of locations to access and the associated access pattern and operations
+\item
+  Allocate I/O buffer
+\item
+  Perform timestamp setup if necessary
+\item
+  Display target-specific information as requested
+\end{itemize}
+
+After the thread has completed its setup process, it will enter a serialization barrier that will release the main XDD parent thread which will in turn start the next thread. The target thread that has just completed initialization will enter the main barrier waiting for all the other target threads to complete initialization. Once all the threads have been started, the last thread to start will enter the starting barrier and cause all the threads to be released and the fun begins.
+
+All the threads will do their respective I/O operations for a single pass and then enter the pass barrier. The pass barrier causes threads to wait until all threads have completed a pass before starting the next pass. If this is the last pass, then upon being released from this barrier, all the threads will perform any clean-up operations and exit.
+
+Another function of the pass barrier is to hold all the threads dormant whilst thread 0 gathers all the results information from each of the threads and generates the appropriate intermediate results and displays them if requested. This is also the case when all threads have completed all passes and thread 0 needs to process summary information as well.
+
+\subsection{The XDD buffer memory layout}\label{the-xdd-buffer-memory-layout}
+
+XDD uses several buffers during a normal run. All buffers are page aligned. These buffers include:
+
+\begin{itemize}
+\item
+  The Read/Write I/O buffer. This buffer is simply the size of a single I/O request and there is one of these buffers per target being tested. This buffer is normally allocated from user space memory but if the ``-sharedmemory'' option is specified the buffer will be allocated from a shared memory segment. The use of a shared memory segment can have a significant impact on bandwidth performance in some cases.
+\item
+  Access location / operation buffer (aka seeklist). This buffer is variable in size and depends on the number of I/O operations that need to be performed. There is one access location/operation buffer for each target being tested. This buffer contains the following information:
+
+  \begin{itemize}
+  \item
+    The block location to access
+  \item
+    The operation to be performed (read or write)
+  \item
+    The amount of data to transfer for that operation
+  \item
+    The time to issue the I/O request
+  \end{itemize}
+\item
+  Time stamp buffer if time stamping is enabled. This buffer can get very large because there is one time stamp entry for every I/O operation to be performed for the entire XDD run (which includes all passes). For example, if there are three targets and each target will perform 8192 operations per pass and there are 4 passes, then there will be three time stamp buffers (one for each target) with 32768 entries in each buffer (4 passes times 8192 entries per pass). Each time stamp entry contains the following information:
+
+  \begin{itemize}
+  \item
+    Start time stamp (64-bit)
+  \item
+    End time stamp (64-bit)
+  \item
+    Operation (read or write)
+  \item
+    Amount of data transferred
+  \item
+    Pass number
+  \item
+    Operation number
+  \end{itemize}
+\item
+  Per Thread Data Structure (ptds). This data structure contains all the information related to a single target during an XDD run. This is explained in more detail in the section on the \emph{XDD thread structure}.
+\end{itemize}
+
+\subsection{The XDD thread structure}\label{the-xdd-thread-structure}
+
+XDD uses POSIX threads for all processes that it controls. There are one or more threads per target. Each target will have a primary thread and potentially some number of Q threads. The Q threads are used to perform parallel, asynchronous I/O on a particular target. The concept of Q threads is essentially ``aio'' but since ``aio'' is different from system to system, it was easier to simply implement one within XDD.
+
+Each thread (primary or Q thread) has a PTDS (\ul{p}er \ul{t}hread \ul{d}ata \ul{s}tructure) data structure associated with it. The PTDS contains all the information related to a thread running at any given time. This structure is passed to the various routines within XDD. The PTDS's are allocated on an as-needed basis. The layout of the PTDS structures is shown in Figure 1.
+
+The Per Target Data Structure (PTDS) layout including the QThreads.
+
+In the above diagram there are N targets each with some number of QThreads. The number of QThreads is equal to the Queue Depth specified for each target (using the --queuedepth option). The number of QThreads can be different for each target as is shown in this diagram but in practice the number of QThreads is the same for all targets during a run. The primary PTDS for each target is, in fact, QThread 0. If there is more than one QThread for a target, the subsequent QThreads are chained together as shown in the diagram. The last QThread in the chain is identified by the fact that its ``next QThread'' point is null.
+
+\subsection{XDD barriers}\label{xdd-barriers}
+
+XDD uses a number of synchronization barriers in order to provide precise control and certain functionality such as lock-stepping. The primary barriers cause all the threads to begin execution at precisely the same time for each pass of a run. The barriers are implemented using mutexes and semaphores. The amount of time required to process a semaphore request is significantly less than the time scales of an I/O operation and has no measurable effect on the results.
+

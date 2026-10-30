@@ -1,0 +1,37 @@
+\newpage
+\section{Runtime Hints}\label{runtime-hints}
+
+\subsection{Windows}\label{windows}
+
+The Windows physical drive is the equivalent of the raw volume in a Unix environment. The physical drive can be specified by using the following XDD command line:
+
+XDD --op read --targets 1 \href{file://///.//PhysicalDrive0}{\textbackslash\textbackslash.\textbackslash\textbackslash PhysicalDrive0} --blocksize 1 --mbytes 1
+
+XDD may complain about an incorrect function but that message can be ignored. It will be fixed in a future release. If a \emph{cygwin} shell window is being used then the syntax must include extra ``\textbackslash'' characters like so:
+
+XDD --op read --targets 1 \textbackslash\textbackslash\textbackslash\textbackslash.\textbackslash\textbackslash\textbackslash\textbackslash PhysicalDrive0 --blocksize 1 --mbytes 1
+
+\subsection{Linux}\label{linux-1}
+
+Raw I/O is only supported using the ``raw'' command to create the ``raw'' device associates and then doing I/O to those devices. The Linux ``raw'' devices are only an approximation of real raw devices on most other Unix systems. It should also be mentioned that transfer sizes larger than about 256Kbytes may not actually be issued to the device but rather be split into multiple requests by the ``raw'' device driver.
+
+\subsection{FreeBSD}\label{freebsd}
+
+\subsection{OSX}\label{osx}
+
+\subsection{Solaris}\label{solaris}
+
+Solaris is no longer supported.
+
+\subsection{IRIX}\label{irix}
+
+IRIX is no longer supported but was reasonably well behaved and had no known idiosyncrasies.
+
+\subsection{\texorpdfstring{AIX }{AIX }}\label{aix-1}
+
+AIX is no longer officially supported.
+
+AIX can use very large page sizes (on the order of 16Mbytes per page) but it is still necessary to ``pin'' all the pages in memory for every I/O operation. For most I/O performance testing this is not a problem unless the number of targets gets large and/or the bandwidth is very high. In this case the page pinning operation takes a significant percentage of the I/O time and can have a negative affect on the results.
+
+To avoid the page pinning penalty, the ``-sharedmemory'' operation can be used to allocate the I/O buffer in a shared memory segment which causes the system to bypass the page pining since shared memory pages are already pinned by default.
+

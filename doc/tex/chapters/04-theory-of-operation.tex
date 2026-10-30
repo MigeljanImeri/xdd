@@ -1,0 +1,267 @@
+\newpage
+\section{Theory of Operation}\label{theory-of-operation}
+
+\subsection{XDD Program Structure Overview}\label{xdd-program-structure-overview}
+
+XDD consists of the main XDD executable and one or more ``target'' threads that are created to perform the actual I/O operations on a specific target device or file. The following terms are important to understand in order to make sense of the program and source code structure:
+
+\begin{itemize}
+\item
+  The time from the invocation of the XDD command until it returns control to the shell is referred to as a ``run''
+\item
+  Each ``run'' consists of one or more ``passes''
+\item
+  Each ``pass'' consists of one or more I/O ``operations''
+\end{itemize}
+
+For example, the following simple XDD command line will perform an XDD ``run'' that consists 5 passes of 128 write I/O Operations (4Kbytes each) to be performed on the specified ``target'' called ``testfile''. The ``verbose'' option will cause XDD to display intermediate results for each ``pass'' as the pass completes.
+
+\begin{quote}
+\textbf{XDD --op write --target testfile -blocksize 4 --numreqs 128 --passes 5 --verbose}
+\end{quote}
+
+The overall program structure has been simplified the several basic parts as shown:
+
+\emph{QThread}
+
+target\_pass subroutine
+
+Target Thread
+
+\subsection{Basic Operation}\label{basic-operation}
+
+XDD is a program that performs data transfer operations between memory and a disk device or file (or multiple disk devices / files) and collects and displays performance information about these I/O operations. XDD creates one Target Thread for every device or file under test. Each XDD Target Thread creates one or more QThreads (aka ``worker'' threads) and issues ``tasks'' to available QThreads to perform required. A QThread given an I/O task will issue an I/O operation to the ``target'' which is either a disk storage device or a file. Each I/O operation is either a read or a write operation of a fixed multiple of the "block size". Optionally, the QThread will also perform a ``send'' or ``receive'' operation to a network ``socket'' if the End-to-End option had been specified.
+
+An XDD ``run'' consists of several ``passes'', the number of which is specified by the ``--passes'' option. Each pass will execute some number of I/O requests on the specified target(s) at the given block size. In general, each pass is identical to the previous passes in a run with respect to the block size, number of requests to issue, and the access pattern unless certain options are used to alter these parameters between passes. Passes are run one after another with no delays between passes unless a pass delay is specified with the ``--delay'' option.
+
+Multiple passes within an XDD run are used to determine the reproducibility of the results. In theory, the results from each pass in an XDD run should be the same or at least very close to the same given the same set of run-time parameters.
+
+Upon invocation, XDD will parse the command line arguments and spawn one Target Thread for each target specified for the run. The Target Thread will spawn additional ``QThreads'' according to the ``-queuedepth'' option. After the Target Threads have been initialized they will wait at an ``initialization barrier'' until XDD ``main'' has spawned and initialized the Results Manager thread and optionally the Heartbeat and/or the Restart Monitor threads which depend on the --heartbeat and --restart options respectively.
+
+\subsection{Command Line Options and the Setup File}\label{command-line-options-and-the-setup-file}
+
+XDD has a command-line interface that requires all the run-time parameters to be specified either on the XDD invocation command line or in a ``setup'' file. The format of the setup file is similar to the XDD command-line in that the options can be simply entered into the setup file the same as they would be seen on the command line. The following example shows an XDD invocation using just the command-line and the same invocation using the setup file along with the contents of the setup file.
+
+Command line:
+
+\begin{quote}
+xdd --op read --targets 1 /dev/scsi/disk1 --blocksize 8 --numreqs 128
+
+--verbose
+\end{quote}
+
+Using a Setup file:
+
+xdd --setup XDDrun.txt
+
+--op read --targets 1 /dev/scsi/disk1
+
+--blocksize 8
+
+--numreqs 128
+
+--verbose
+
+Where the setup file XDDrun.txt is an ASCII text file that contains the following:
+
+\subsection{Operation Specification}\label{operation-specification}
+
+The operation to perform is specified by the ``--\textbf{op}'' option. This can be either ``\emph{read}'' or ``\emph{write}''. This version of XDD \emph{will} mix read and write operations within an XDD run according to the read/write ratio set using the \textbf{--rwratio} option. Each r/w operation will transfer a given amount of data known as the ``block size''. A block is, by default, 4096 bytes but can be specified to be any positive integer value by using the ``--\textbf{blocksize}'' option. The ``block'' is used as the basic unit for all other options requiring a data size unless otherwise noted. It is recommended that the block size be specified as numbers that are integer multiples of 512 bytes (i.e. 1024, 2048, 5120, \ldots etc.) since this tends to be the predominant sector size for most storage devices at the current time.
+
+\subsection{Target Specification and Multiple Target Synchronization}\label{target-specification-and-multiple-target-synchronization}
+
+All requests are sent to a ``target'' which can be either a disk device or a file. A single XDD run can operate on a single target or multiple targets simultaneously. Target names are specified using the ``--\textbf{targets}'' option. It is always necessary to specify the number of targets followed by the individual target names. In order to simplify the list of target names, the ``-\textbf{targetdir}'' option can be used to specify the directory where the target devices or files reside.
+
+The execution of the XDD threads on multiple targets is synchronized through the use of "barriers". Each XDD Target Thread initializes itself and waits for all the other XDD Target Threads to "reach at starting point". Once all the XDD Target Threads reach this point, they are all released simultaneously. Each XDD Target Thread will run independently until it has either completed all of its requested I/O operations or reached its time limit (as specified by the --\textbf{timelimit} input parameter). At this point the XDD Target Threads synchronize with the Results Manager Thread that will collect and display the intermediate results for the pass that just completed. After displaying the results the Target Threads will be released to begin another pass or to perform their end-of-run processing.
+
+It is also possible to resynchronize the Target Threads at specific points within a pass by using the ``--\textbf{syncio}'' and/or ``-\textbf{syncwrite}'' options. The -\textbf{syncio} option instructs each of the Target Threads to synchronize after some number of I/O operations specified as an argument to this option. The default is to synchronize only at the beginning of each pass. The --\textbf{syncwrite} option is used to synchronize ``buffered'' write operations at the end of each pass by flushing all the file system data buffers to the physical media. This option is not able to flush and cache buffers on the disk controllers or disk drives themselves.
+
+Synchronizing the XDD Target Threads is done to insure that all the XDD Target Threads start at precisely the same time in order to avoid misleading results due to skewing the start times. It is possible to eliminate synchronization by specifying the -\textbf{nobarrier} parameter. The result is that many of the I/O start times can be significantly skewed from one another for all participating XDD Target Threads. However, that may in fact be the desired effect.
+
+\subsection{Time Synchronization Across Multiple Computer Systems}\label{time-synchronization-across-multiple-computer-systems}
+
+Synchronization can also be done across multiple machines each running XDD. This is accomplished by using the timeserver and gettime programs. The timeserver program provides a single global reference clock that is used by the time stamping in order to be able to more accurately correlate events in time from multiple computer systems. The timeserver program should be run on a single machine as a background task. This machine must be accessible via a LAN to all the machines that will be running XDD. This LAN should preferably be a lightly used LAN for optimum results.
+
+The preferred way to make this work is to use ``ssh'' to start the XDD programs on each of the nodes using the ``-starttime'' and ``-timeserver'' options. The ``-timeserver'' option tells the XDD program the host name or IP address of the timeserver machine. The XDD program will contact this machine to determine the ``global'' time that all the other XDD programs will use as a frame of reference. The ``-starttime'' option specifies the time to start in ``global time'' units.
+
+Before running the ``ssh XDD'' command line in a script, it is necessary to determine a global time sometime in the future at which all the XDD program will start. The way to do this is to use the ``gettime'' program to contact the time server, determine the global time, add a specified number of seconds, and display the result on standard out. This global start time can then be used as the argument to the ``-starttime'' option for each of the ``rsh XDD'' commands. An example script would look like so:
+
+\begin{quote}
+\ldots.
+
+set g=`gettime --timeserver 192.10.11.12 --add 20`
+
+\# At this point \$\{g\} will be the current global time plus
+
+\# 20 seconds.
+
+foreach i ( 1 2 3 4 )
+
+ssh host\$\{i\} XDD --starttime \$\{g\} --op read --targets 1 /dev/dsk/c1d2s0 --mbytes 5 --timeserver host 192.10.11.12 \ldots\&
+
+end
+
+wait
+
+\ldots{}
+\end{quote}
+
+This example scriptlet will set the local variable ``\$\{g\}'' to the global time plus 20 seconds. This value is then passed to each of the XDD programs that are started on host1, host2, host3, and host4. This will result in each XDD program starting at exactly the same time. However, if any or all of the host machines running XDD are in the presence of a black hole, neutron star, or other extremely massive body, the relativistic effects on the space-time continuum may produce unpredictable results.
+
+\subsection{XDD Run Time or Run Length}\label{xdd-run-time-or-run-length}
+
+It is necessary to specify a limit on how \emph{long} XDD will run. There are several ways to do this. First, it is possible to explicitly specify the number of transfers to perform using the ``--\textbf{numreqs}'' option. This specifies the number of read or write calls to make for a single ``pass''. It is also possible to simply specify the number of MegaBytes to transfer using the ``--\textbf{bytes}'', ``--\textbf{kbytes}'', ``--\textbf{mbytes}'', or ``--\textbf{gbytes}'', option. It is important to note that a KiloByte, MegaByte, GigaByte in this context is a power of two: 1024, 1048576, or 1073741824 bytes. Finally, it is possible to specify a time limit for each XDD pass using the --\textbf{timelimit} option. This will cause each pass to terminate after the specified number of seconds has elapsed or after executing the specified number of requests or transferring the specified number of megabytes whichever occurs first.
+
+\subsection{I/O Range}\label{io-range}
+
+For random I/O operations, each XDD I/O thread performs its I/O operations within a certain consecutive ``range'' of blocks on the target (see Figure 1). The range is either \emph{implicitly} specified as the number of MegaBytes to transfer or \emph{explicitly} specified using the ``--\textbf{range}'' option. For example, if the user specifies ``2048k'' bytes in data transfers, then the range will be implied as 512 blocks (512 * 4096). However, if the user wants to transfer the same 2048k bytes randomly over a 2 GigaByte area (or range) on the target then the range needs to be explicitly specified as 512 requests or 2 GigaBytes.
+
+The beginning of the I/O range defaults to the beginning of the target whether it is a device or a file. It is possible to specify a ``starting offset'' such that the I/O range begins at some distance into the target (see Figure 1). This can be done several ways. First, the ``--\textbf{startoffset}'' option can be used to start I/O operations at some distance into the target for an XDD run. The ``--\textbf{passoffset}'' can be used to incrementally move the starting offset further into the target device on subsequent passes within an XDD run by some specified number of blocks. Finally, the ``--\textbf{targetoffset}'' can be used to move the starting offset into the target device by a number of blocks that is determined by the target offset value times the target's ordinal number. For example, given an XDD run on 4 targets with a target offset of 1024 and a starting offset of 0, I/O will start at block 0 on target 0, block 1024 on target 1, block 2048 on target 2, and block 3072 on target 3.
+
+\subsection{Access Patterns}\label{access-patterns}
+
+The range can be specified to start anywhere within the target so long as care is taken to insure that the end of the range is still within the confines of the target. This is particularly true when randomly accessing blocks within a target that is a regular file. Within the I/O range, data access patterns can be either
+
+\begin{quote}
+1) purely sequential
+
+2) staggered sequential
+
+3) purely random
+\end{quote}
+
+\emph{\ul{Figure 1. Example of the I/O range and the offset.}}
+
+Purely sequential I/O is the default access pattern. This access pattern accesses consecutive data blocks starting at the beginning of the range to the end of the range.
+
+A Staggered Sequential access pattern also starts at the beginning of the range and ends at the end of the range but only transfers every N\textsuperscript{th} data block. This access pattern is specified by the "-seek staggered" parameter. For example, if reading 256 MegaBytes within a 2 GigaByte range, the 256 MegaBytes is spread evenly over the entire 2GB range. Therefore, every 8\textsuperscript{th} data block is read with gaps of unread data in between since 256 MegaBytes is 1/8\textsuperscript{th} of 2 GigaBytes.
+
+A purely random access pattern is one that accesses data blocks at the specified number of requests randomly throughout the specified range. It is important to note that for a given range, the same random pattern is generated for each successive pass/run in order to yield *reproducible* results. The random access pattern used for each pass within a run can be changed by using the ``-randomize'' parameter. The random access pattern used for each run can be changed by using the ``-seek seed'' parameter.
+
+It should be noted that when running \emph{XDD} on a regular file especially in ``random'' mode, the Direct IO option (-dio) should be used to avoid using the file system buffer cache. The file system data caching mechanisms will produce misleading (and non-reproducible) results. See the section on Reading and Writing Devices and Files for more information.
+
+Finally, it is possible to specify a ``null'' access pattern whereby the first block in the range is continually accessed. This is accomplished by specifying the ``--seek none'' option. This is useful for testing the effectiveness of caching algorithms and/or the speed of the cache on the target device or file.
+
+\subsection{Reading and Writing Devices and Files}\label{reading-and-writing-devices-and-files}
+
+XDD read or writes devices or files. When running XDD on regular ``files'', the target files tend to be large and can ``accidentally'' be left behind after the testing. The --deletefile option will remove a target file at the conclusion of the XDD run. This option is not recommended when running XDD on device files for obvious reasons.
+
+As previously implied, sequentially reading data is relatively straight forward: start at the beginning of the device or file plus the starting offset and read data until the end of the data range is reached or the time limit expires. When reading a file it is assumed that the file is at least as large as the desired data range so that the read does not go past the end of the file. If the file is smaller than the desired or specified data range then a warning message is displayed regarding this condition.
+
+Reading a file on most systems uses a file system buffer cache. In this mode, data is read into a file system buffer and then copied into the XDD I/O buffer by the CPU. This can cause two different problems with respect to the performance results. First, the maximum bandwidth for reading data into the machine for the first time is limited to the memory copy speed of the processor that can be much lower than the true bandwidth of the disk I/O subsystem under evaluation. Secondly, if all the data from the file fits into the file system buffer then subsequent reads to the same file will be satisfied by copying the data from the file system buffer cache and not from the actual disk subsystem. In this case, XDD is reporting the memory copy performance rather than the speed of the disk subsystem. To avoid this problem the Direct I/O, (``--dio''), option can be used to bypass the use of the file system buffer cache and forcing all read requests to access the disks. There are certain I/O block size and alignment restrictions that must be observed in order to use Direct I/O and these restrictions are Operating System dependent. These restrictions essentially state that the I/O requests must start on a ``page-size'' boundary and must be in units of the native block size of the underlying file system.
+
+Writing devices is very similar to read files except for the data transfer direction. However, writing ``files'' has additional complexities that can affect the performance results. This is due primarily to the allocation mechanisms used by the file system manager to allocate disk space when writing a file for the first time. Generally speaking, each write operation will cause the file system manager to allocate space on the disk to accommodate the data being written. These allocation operations can require additional accesses to the disk that are ``invisible'' to XDD but do show up in the performance results as essentially slower write operations. In order to minimize the effects of this allocation process, the ``--preallocate'' option can be used to do the entire allocation operation before the file write operations take place. The argument to this option specifies the number of blocks to pre-allocate before the write operations start. This number should be greater than or equal to the number of blocks that will be in the file.
+
+File write performance results can also be affected by the file system buffer cache. When writing a file the data is first copied into the file system buffer and later actually written to the physical disk subsystem. As in the case of the read operation, it is possible to use the ``--dio'' option to avoid this data copy operation. The same block size and alignment restrictions apply Direct I/O in this case as in the read case.
+
+One last note about writing to a target device or file. The data pattern to be written to the target can be specified by the ``--datapattern'' option. This will fill the data buffer with a single character data pattern, a random data pattern, or one of several predefined data patterns depending on the argument to this option. No data verification is done with the data that is written out using this pattern. It is simply an option to use in case it is necessary to find out where XDD has written to.
+
+Finally, there is an option to re-align the internal data buffer within memory if necessary. This is used more for testing computer system memory performance rather than I/O performance of a target and therefore may have limited usefulness. It is only mentioned here for completeness.
+
+\subsection{Processor Allocation and Priority Assignment}\label{processor-allocation-and-priority-assignment}
+
+On multi-processor systems it is possible to assign XDD threads to specific processors. This is accomplished with the --processor, --singleproc, --roundrobin option. The --processor option allows the explicit assignment of a processor to a specific XDD Target Thread and/or QThreads.
+
+The --singleproc option will assign all XDD Target Threads to a single processor specified as an argument to this option. The --roundrobin option will distribute the XDD threads across M processors where M is the number of processors. M should be less than or equal to the number of processors in the system. The processor-numbering scheme used is 0 to N-1 where N is the number of processors in the system. For example, if there are five XDD threads running on a computer with eight processors, then the round robin processor assignment will assign threads 0 thru 4 on processors 0 thru 4. However, if there were only two processors on the computer, then XDD threads 0, 2, and 4 will be assigned to processor 0 and threads 1 and 3 will be assigned to processor 1.
+
+The priority of each thread defaults to the ``normal'' priority on the system. It is possible to increase the priority to a maximum level by using the ``--maxpri'' option. Maximizing the runtime priority of the XDD threads decreases the effects on the I/O performance of other processes running on the system. It is also possible to lock the XDD process and I/O buffers using the ``--plock'' option. This is done to prevent the XDD process or any of its I/O buffers from being paged or swapped out of the system. The ``--maxall'' option is a shortcut for specifying both ``--maxpri'' and ``--plock.''
+
+\subsection{Preallocation}\label{preallocation}
+
+Preallocation is used to tell the file system manager to allocate a specified amount of space in the file system before the actual write operations occur. The advantage to this is limiting the metadata overhead involved with allocations during write operations but also to limit the number of file system ``extents'' used to hold file data. Normally, when using DirectIO, each write operation can have the effect of allocating a new file extent resulting in potential file fragmentation. The use of the ``-preallocation'' option circumvents this problem by allocating all the extents for the file ahead of time.
+
+However, even though the space is allocated, it does not mean that the file size is that large. In fact, it is possible to preallocate, say, 1GB of space and still have a zero length file.
+
+Here is a synopsis of the various preallocation idiosyncrasies:
+
+\begin{itemize}
+\item
+  Create a 0-length file
+\item
+  Call xfsctl to reserve 16MB~
+\item
+  One 16MB extent is created for the file
+\item
+  Write 8K into the file~
+\item
+  Close the file
+\end{itemize}
+
+The file is now 8KBytes long but takes up 16MB of physical space (one extent).
+
+\begin{itemize}
+\item
+  Open the same file
+\item
+  Call xfsctl to preallocate 64MB~
+\item
+  Close file
+\end{itemize}
+
+The file now takes up two extents:
+
+\begin{itemize}
+\item
+  The first 16MB extent
+\item
+  A second 48MB extent~
+\end{itemize}
+
+The file is still 8KBytes in length and the 8KBytes are still valid but the file now occupies 64MB of space spanning two extents
+
+\begin{itemize}
+\item
+  Open the file~
+\item
+  LSeek +32KBytes into the file
+\item
+  Write 4KBytes
+\item
+  Close file
+\end{itemize}
+
+The file is now 36KBytes in length
+
+\begin{itemize}
+\item
+  The first 8 KBytes are valid
+\item
+  Bytes 8K to 32K are NULL (as expected)
+\item
+  Bytes 32K to 36K are valid
+\end{itemize}
+
+The file still retains its two extents (16MB+48MB)
+
+\begin{itemize}
+\item
+  Open file~
+\item
+  LSeek +8KBytes into the file
+\item
+  Write 3*8KBytes (three separate calls to write)
+\item
+  Close file
+\end{itemize}
+
+The file is still 36KBytes~
+
+\begin{itemize}
+\item
+  The first 8K is still valid
+\item
+  Bytes 8K-32K are new and correct
+\item
+  Bytes 32K-36K are still valid
+\end{itemize}
+
+Note: All IO was done with DirectIO enabled. I also ran similar tests without DirectIO and the results were the same. Conclusion, DirectIO does not seem to affect the outcome because the space allocation has already been done. With respect to allocation, the only difference between DirectIO and Buffered IO is *when* the allocation is done. For DirectIO allocations are performed for each and every I/O in the order in which they are done. For Buffered IO the allocations are done at some later time based on the assumption that many adjacent blocks can be grouped into a single largish allocation rather than a bunch of smallish ones as in the DirectIO case.
+
+\subsection{I/O Time Stamping}\label{io-time-stamping}
+
+While running, each XDD thread has the option to enter time stamp information into a table that is later written to a file for further analysis. Each I/O operation is time stamped before the operation starts and just after the operation ends. The time stamp table contains all the information necessary to understand when I/O operations started, ended, the block location being accessed, and the amount of data transferred. The time stamps themselves are taken from the system\textquotesingle s high-resolution timer and re-normalized in units of picoseconds so that this data can easily be correlated with time stamp data from the other associated XDD output files.
+
+The format of the Time Stamp binary output file contains a header followed by the time stamp data.
+
+In addition to a binary output file, the time stamp table information can be dumped in ASCII readable text. There are several options for ASCII output including a summarized and a detailed output specified by the ``--output summary'' and ``--output detailed'' options. Appendix A includes examples of the summarized and detailed outputs of the Time Stamp table. The time stamp ASCII output file names have a ``.csv'' file extension so that it can more easily be read by a spreadsheet program such as Excel®.
+

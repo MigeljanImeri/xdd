@@ -1,0 +1,346 @@
+\newpage
+\section{Examples}\label{examples}
+
+The following is a list of examples on how to run XDD.
+
+\subsection{Example 1 -- Basic XDD command line}\label{example-1-basic-xdd-command-line}
+
+\begin{quote}
+XDD --op \textbf{read} --targets \textbf{1} \textbf{/dev/rdsk/dsk10d2s0} --blocksize \textbf{128}
+
+-mbytes \textbf{64} --passes \textbf{3} --verbose
+\end{quote}
+
+This is a very basic test that will \textbf{read} sequentially from target device \textbf{/dev/rdsk/dks10d2s0} starting at block 0 using a fixed block size of \textbf{128} bytes until it has read \textbf{64} MegaBytes (64 *1024*1024 bytes). It will do this \textbf{3} times and display performance information for each pass. Please note that all these options need to be on a single command line unless they are in the setup file where they can be on separate lines.
+
+\subsection{Example 2 -- Specifying multiple targets and timelimit}\label{example-2-specifying-multiple-targets-and-timelimit}
+
+\begin{quote}
+XDD --op \textbf{write} --targets \textbf{2 /raid/BIGFILE1 /raid/BIGFILE2}
+
+-blocksize \textbf{512} -mbytes \textbf{64} --verbose
+
+--passes \textbf{3} -timelimit \textbf{10}
+\end{quote}
+
+This test will \textbf{write} sequentially from \textbf{2} target files \textbf{/raid/BIGFILE1} and \textbf{/raid/BIGFILE2} starting at the beginning of each file using a fixed block size of \textbf{512} bytes until it has read \textbf{64} MegaBytes (64 * 1024*1024 bytes) \emph{-- or --} until it has reached a time limit of \textbf{10} seconds at which time it will end the current pass and proceed to the next pass. It will do this \textbf{3} times and display performance information for each pass. The \emph{combined} performance of both devices is calculated and displayed at the end of the run.
+
+\subsection{Example 3 -- Time Stamping and Setup File}\label{example-3-time-stamping-and-setup-file}
+
+\begin{quote}
+XDD --op \textbf{write} --targets \textbf{2 /dev/rdsk/dks10d2s0 /dev/rdsk/dks10d2s0}
+
+-setup \textbf{XDD.setup} --ts \textbf{detailed} --ts output \textbf{ts.write}
+\end{quote}
+
+This test that will \textbf{read} sequentially from \textbf{2} targets that are actually a single device: \textbf{/dev/rdsk/dks10d2s0.} The transfer size of \textbf{2048} bytes per block, read limit of \textbf{4096} MegaBytes (4096 * 1024*1024 bytes), the time limit of \textbf{10} seconds for each pass, verbose output, and pass count of \textbf{3} are all specified in the \textbf{XDD.setup} file which looks like so:
+
+\begin{quote}
+-blocksize \textbf{2048}
+
+-mbytes \textbf{4096}
+
+--verbose
+
+--passes \textbf{3} -timelimit \textbf{10}
+\end{quote}
+
+The time stamp option is also used in this example to dump an ASCII output file called \textbf{ts.write.} It should be noted that these time stamp file names are appended with a \textbf{t\#} where \textbf{\#} is the number of the target that belongs to the particular time stamp file. In this example, since there are two targets, the time stamp files will be \textbf{ts.write.t0} and \textbf{ts.write.t1.}
+
+\subsection{\texorpdfstring{Example 4 -- Random Seeks }{Example 4 -- Random Seeks }}\label{example-4-random-seeks}
+
+\begin{quote}
+XDD --op \textbf{read} --targets \textbf{1} \textbf{/dev/rdsk/dsk10d2s0} --blocksize \textbf{1024}
+
+-mbytes \textbf{16} --passes \textbf{3} --verbose
+
+--seek random --seek range \textbf{4000000}
+\end{quote}
+
+This is a very basic \emph{random I/O} test that will \textbf{read} from target device \textbf{/dev/rdsk/dks10d2s0} starting at some random location in \textbf{1024-byte} blocks until it has read \textbf{16} MegaBytes (16 * 1024*1024 bytes). It will do this \textbf{3} times and display performance information for each pass. The number of requests that need to be generated to read 16 MegaBytes in 1024 byte blocks is 16,384. Since this is a purely random I/O pattern, these 16,384 requests are distributed over a range of 4,000,000 blocks (again 1024 bytes per block). This is useful in constraining the area over which the random locations are chosen from. The same seek locations are used for each pass in order to generate reproducible results. In fact, upon each invocation of XDD using the same parameters, the same random locations are generated each time. This allows the user to change the disk or starting offset or some such thing and observe the effects. The random locations may be changed from pass to pass within an XDD run by using the "-\textbf{randomize}" option in which case a new set of locations is generated for each pass. Furthermore, the random locations may be changed from run to run using the \textbf{--seek seed} option to specify a different random number generation seed value for each invocation of XDD.
+
+\subsection{Example 5 -- End to End operation}\label{example-5-end-to-end-operation}
+
+Perform an end to end operation between two hosts, hostA and hostB, where hostA is the \emph{source} and hostB is the \emph{destination}.
+
+Start the instance of XDD on hostB, the \emph{destination} side \ul{first}. This is required because if the \emph{destination} side is not running when the \emph{source} side starts, the \emph{source} side will terminate early because it will not be able to connect to the instance of XDD on the \emph{destination} side.
+
+Hence, on the \emph{destination} side:
+
+\begin{quote}
+XDD --op \textbf{write} --targets \textbf{1} \textbf{/tmp/foo2} --blocksize \textbf{4096} -mbytes \textbf{3000} --verbose \textbackslash{}
+
+--e2e \textbf{isdestination} --e2e \textbf{destination} \textbf{192.168.17.10} --e2e \textbf{port 2010}
+\end{quote}
+
+Once this is running it will wait for a connection from the \emph{source} side before writing data to the \emph{destination} target file \textbf{/tmp/foo2.}
+
+On the \emph{source} side:
+
+\begin{quote}
+XDD --op \textbf{read} --targets \textbf{1} \textbf{/tmp/foo1} --blocksize \textbf{4096} -mbytes \textbf{3000} --verbose \textbackslash{}
+
+--e2e \textbf{issource} --e2e \textbf{destination} \textbf{192.168.17.10} --e2e \textbf{port 2010}
+\end{quote}
+
+Once the \emph{source} side starts, it will open a socket to the \emph{destination} host and start reading the \emph{source} file \textbf{/tmp/foo1} and sending it over the socket to the \emph{destination} side.
+
+Once the target file on the \emph{source} side has been read and transferred, assuming no additional passes are requested, then the \emph{source} side will terminate followed by the \emph{destination} side. Each will display the usual results with an additional value at the end of each output line. This value will be a number between 0 and 100 and represents the percentage of total time that was spent by XDD transferring data over the network.
+
+It is important to follow these basic rules when running an e2e operation:
+
+\begin{itemize}
+\item
+  The source and destination XDD command lines must contain either --e2e issource or --e2e isdestination respectively in order to properly identify their respective roles
+\item
+  The ``operation'' or --op for the \emph{source} must be ``read''
+\item
+  The ``operation'' or --op for the \emph{destination} must be ``write''
+\item
+  The number of megabytes to read from the \emph{source} target should be equal to the number of megabytes written to the \emph{destination} target
+\item
+  The queue depth (i.e. --queuedepth option) must be the same on both the \emph{source} and \emph{destination} sides for a given target
+\item
+  The \emph{destination} host name/address must be specified on both \emph{source} and \emph{destination} \emph{XDD} command lines and must be the same
+\end{itemize}
+
+\subsection{E2E Example with multiple Network Interfaces}\label{e2e-example-with-multiple-network-interfaces}
+
+\textbf{\ul{On the~Source~Side:}}
+
+xdd .....~
+
+~~ -targets 1 null ~ ~ ~ ~ ~ ~ ~ ~ \# Will read or write using the XDD null device
+
+\textbf{~~ -op ~read ~ ~ ~ ~ ~ ~ ~ ~ ~\# Read from the source file/device}
+
+~~~\textbf{-e2e~issource ~ ~ ~ ~ ~ ~ ~ ~ \# Specifies that this is the Source side}
+
+~~~\textbf{-e2e~destination~\href{http://192.168.1.5:40010/}{192.168.1.5:40010},4 \# Specifies the first~destination~side address}
+
+\textbf{\# to use plus the base port and number of ports}
+
+\textbf{~~ -e2e~destination~\href{http://192.168.2.5:40010/}{192.168.2.5:40010},4 ~ \# Specifies the second~destination side address}
+
+\textbf{\# to use plus the base port and number of ports}
+
+\textbf{~~ -e2e~destination~\href{http://192.168.3.5:40010/}{192.168.3.5:40010},4 ~ \# Specifies the third~destination~side address}
+
+\textbf{\# to use plus the base port and number of ports}
+
+\textbf{~~ -e2e~destination~\href{http://192.168.4.5:40010/}{192.168.4.5:40010},4 ~ \# Specifies the fourth~destination side address}
+
+\textbf{\# to use plus the base port and number of ports}
+
+\textbf{\ul{On the~Destination~Side:}}
+
+~
+
+~~ xdd ...
+
+\textbf{~~ -op ~write ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ \# Write to the~destination~file}
+
+\textbf{~~~-e2e~isdestination \textbackslash{} ~ ~ ~ ~ ~ ~ ~ \# Specifies that this is the Destination side}
+
+~~~\textbf{-e2e~destination~\href{http://192.168.1.5:40010/}{192.168.1.5:40010},4 \# Specifies the first~destination~side address}
+
+\textbf{\# to use plus the base port and number of ports}
+
+\textbf{~~ -e2e~destination~\href{http://192.168.2.5:40010/}{192.168.2.5:40010},4 ~ \# Specifies the second~destination side address}
+
+\textbf{\# to use plus the base port and number of ports}
+
+\textbf{~~ -e2e~destination~\href{http://192.168.3.5:40010/}{192.168.3.5:40010},4 ~ \# Specifies the third~destination~side address}
+
+\textbf{\# to use plus the base port and number of ports}
+
+\textbf{~~ -e2e~destination~\href{http://192.168.4.5:40010/}{192.168.4.5:40010},4 ~ \# Specifies the fourth~destination side address}
+
+\textbf{\# to use plus the base port and number of ports}
+
+plus all the other options\ldots{}
+
+\subsection{Example Time Stamp Output}\label{example-time-stamp-output}
+
+Target and Qthread number for this report, 0, 0
+
+IOIOIOIOIOIOIOIOIOIOI XDD version Linux.7.0.0.rc9.012810.Build.0317 based on Linux.7.0.0.rc9.011810.Build.1412 IOIOIOIOIOIOIOIOIOIOIOI
+
+xdd - I/O Performance Inc., US DoE/DoD Extreme Scale Systems Center \textless ESSC\textgreater{} at Oak Ridge National Labs \textless ORNL\textgreater{} - Copyright 1992-2010
+
+XDD DISCLAIMER:
+
+*** \textgreater\textgreater\textgreater\textgreater{} WARNING \textless\textless\textless\textless{}
+
+*** THIS PROGRAM CAN DESTROY DATA
+
+*** USE AT YOUR OWN RISK
+
+*** IOPERFORMANCE and/or THE AUTHORS ARE NOT LIABLE FOR
+
+*** \textgreater\textgreater\textgreater\textgreater{} ANYTHING BAD \textless\textless\textless\textless{}
+
+**** THAT HAPPENS WHEN YOU RUN THIS PROGRAM
+
+...although we will take credit for anything good that happens
+
+but we are not *liable* for that either.
+
+Starting time for this run, Thu Jan 28 03:22:28 2010
+
+ID for this run, \textquotesingle No ID Specified\textquotesingle{}
+
+Maximum Process Priority, disabled
+
+Passes, 1
+
+Pass Delay in seconds, 0
+
+Maximum Error Threshold, 16
+
+Target Offset, 0
+
+I/O Synchronization, 0
+
+Total run-time limit in seconds, 0
+
+Output file name, test-run.txt
+
+CSV output file name, test-run.csv
+
+Error output file name, stderr
+
+Pass synchronization barriers, enabled
+
+Number of Targets, 1
+
+Number of I/O Threads, 1
+
+Computer Name, pod7.ccs.ornl.gov, User Name, tmruwart
+
+OS release and version, Linux 2.6.18-128.1.6.el5 \#1 SMP Wed Apr 1 06:58:14 EDT 2009
+
+Machine hardware type, x86\_64
+
+Number of processors on this system, 8
+
+Page size in bytes, 4096
+
+Number of physical pages, 8241895
+
+Megabytes of physical memory, 32194
+
+Clock Ticks per second, 100
+
+Seconds before starting, 0
+
+Target{[}0{]} Q{[}0{]}, /data/xfs/testfile
+
+Target directory, "./"
+
+Process ID, 2523
+
+Thread ID, 2524
+
+Processor, all/any
+
+Read/write ratio, 0.00 READ, 100.00 WRITE
+
+Throttle in MB/sec, 0.00
+
+Per-pass time limit in seconds, 0
+
+Pass seek randomization, disabled
+
+File write synchronization, disabled
+
+Blocksize in bytes, 4194304
+
+Number of Operations, 16, of, 16, target ops for all qthreads
+
+Start offset, 0, blocks, 0, bytes, 0.000 KBytes, 0.000 MBytes, 0.000 GBytes, 0.000000 TBytes
+
+Total data transfer for this target, 65536, blocks, 67108864, bytes, 65536.000 KBytes, 64.000 MBytes, 0.062 GBytes, 0.000061 TBytes
+
+Total data transfer for this QTHREAD, 65536,blocks, 67108864, bytes, 65536.000 KBytes, 64.000 MBytes, 0.062 GBytes, 0.000061 TBytes
+
+Pass Offset, 0, blocks, 0, bytes, 0.000 KBytes, 0.000 MBytes, 0.000 GBytes, 0.000000 TBytes
+
+Seek range, 1048576, blocks, 1073741824, bytes, 1048576.000 KBytes, 1024.000 MBytes, 1.000 GBytes, 0.000977 TBytes
+
+Seek pattern, sequential
+
+Flushwrite interval, 0
+
+I/O memory buffer is a normal memory buffer
+
+I/O memory buffer alignment in bytes, 4096
+
+Data pattern in buffer,0x00
+
+Data buffer verification is disabled.
+
+Direct I/O, enabled
+
+Preallocation, 0
+
+Queue Depth, 1
+
+Timestamping, enabled for DETAILED SUMMARY
+
+Timestamp ASCII output file name, test-run.target.0000.qthread.0000.csv
+
+Delete file, disabled
+
+Start of DETAILED Time Stamp Report, Number of entries, 16, Picoseconds per clock tick, 1000000, delta, 0
+
+Target, RWV Op, Pass, OP Number, Block Location, Distance, StartTS, EndTS, IO\_Time\_ms, Relative\_ms, Delta\_us, Loop\_ms, Inst MB/sec
+
+0,w,1,0,0,0,10288350303715490112,10288350437959490112, 134.24400, 0.00000, 0.00000, 0.00000, 31.244
+
+0,w,1,1,4096,0,10288350437966490112,10288350478994490112, 41.02800, 134.25100, 7.00000, 41.03500, 102.230
+
+0,w,1,2,8192,0,10288350478997490112,10288350533440490112, 54.44300, 175.28200, 3.00000, 54.44600, 77.040
+
+0,w,1,3,12288,0,10288350533446490112,10288350736743490112, 203.29700, 229.73100, 6.00000, 203.30300, 20.631
+
+0,w,1,4,16384,0,10288350736750490112,10288350789934490112, 53.18400, 433.03500, 7.00000, 53.19100, 78.864
+
+0,w,1,5,20480,0,10288350789937490112,10288350839706490112, 49.76900, 486.22200, 3.00000, 49.77200, 84.275
+
+0,w,1,6,24576,0,10288350839708490112,10288350973728490112, 134.02000, 535.99300, 2.00000, 134.02200, 31.296
+
+0,w,1,7,28672,0,10288350973733490112,10288351026693490112, 52.96000, 670.01800, 5.00000, 52.96500, 79.198
+
+0,w,1,8,32768,0,10288351026697490112,10288351109349490112, 82.65200, 722.98200, 4.00000, 82.65600, 50.747
+
+0,w,1,9,36864,0,10288351109354490112,10288351173507490112, 64.15300, 805.63900, 5.00000, 64.15800, 65.380
+
+0,w,1,10,40960,0,10288351173509490112,10288351250697490112, 77.18800, 869.79400, 2.00000, 77.19000, 54.339
+
+0,w,1,11,45056,0,10288351250703490112,10288351290625490112, 39.92200, 946.98800, 6.00000, 39.92800, 105.062
+
+0,w,1,12,49152,0,10288351290627490112,10288351353374490112, 62.74700, 986.91200, 2.00000, 62.74900, 66.845
+
+0,w,1,13,53248,0,10288351353380490112,10288351431280490112, 77.90000, 1049.66500, 6.00000, 77.90600, 53.842
+
+0,w,1,14,57344,0,10288351431284490112,10288351621563490112, 190.27900, 1127.56900, 4.00000, 190.28300, 22.043
+
+0,w,1,15,61440,0,10288351621569490112,10288351678337490112, 56.76800, 1317.85400, 6.00000, 56.77400, 73.885
+
+End of DETAILED Time Stamp Report
+
+Start of SUMMARY Time Stamp Report
+
+Average seek distance in 1024 byte blocks, 0
+
+Range: Longest seek distance in blocks, 0, shortest seek distance in blocks, 0
+
+Average I/O time in milliseconds, 77.51937, average dead time in microseconds, 4.53333
+
+I/O Time Range: Longest I/O time in milliseconds, 203.29700, shortest I/O time in milliseconds, 39.92200
+
+Dead Time Range: Longest dead time in microseconds, 7.00000, shortest dead time in microseconds, 2.00000
+
+End of SUMMARY Time Stamp Report
+

@@ -1,0 +1,46 @@
+\section{Introduction}\label{introduction}
+
+\subsection{About this document}\label{about-this-document}
+
+This document is a guide to compiling, installing, and running the XDD program. It also has a variety of examples and hints for understanding the use and results of XDD.
+
+\subsection{\texorpdfstring{Acknowledgements }{Acknowledgements }}\label{acknowledgements}
+
+The continuing work on XDD is supported by funding and resources of the National Center for Computational Sciences (NCCS) at Oak Ridge National Laboratory (ORNL), the Extreme Scale Systems Center (ESSC) at ORNL, and the Department of Defense.
+
+\subsection{About XDD}\label{about-xdd}
+
+XDD was originally developed in 1992 as a command-line tool for measuring performance and characterizing disk subsystem I/O behavior on anything from a single system to a large cluster of systems -- something a little bit better than the traditional ``dd'' utility in UNIX. The goal was to provide consistent and reproducible performance measurements of disk I/O traffic. After its success in the SGI IRIX\footnote{As of release 7.0.0 the IRIX Operating System is no longer supported.} environment where it was originally developed, it and has been ported to run under Linux, AIX, Solaris, MacOS X, and Windows.
+
+Over the years XDD has assumed many capabilities. As of XDD Release 7.0 it is possible to use XDD to reliably copy exceedingly large files from one computer to another over a network at speeds approaching the capability of the underlying hardware. See the End-to-End option and examples for more information on this feature.
+
+\subsection{License Agreement}\label{license-agreement}
+
+It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this program/document in a file named \textquotesingle Copying\textquotesingle{} or `gpl.txt' or in the section entitled \emph{The GNU Public License} in this document; if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139 or visit their web site at \url{http://www.gnu.org/licenses/gpl.html}.
+
+\subsection{Distribution of XDD}\label{distribution-of-xdd}
+
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
+
+\subsection{Versioning}\label{versioning}
+
+The version numbering format is as follows:
+
+\begin{quote}
+Major.Minor.Revision-Build
+\end{quote}
+
+Where the Major and Minor are numbers (i.e. 7.0).
+
+The Revision-Build indicate the state of the Major.Minor revision. For example, ``rc19-pre'' indicates Release Candidate number 19, with a pre-build'' status -- not a final build.
+
+A final release distribution file would look like so:
+
+\begin{quote}
+\textbf{XDD.Linux.7.0.Build-1504.tgz}
+\end{quote}
+
+\subsection{System Requirements}\label{system-requirements}
+
+XDD can run on a relatively minimally configured system but it is recommended that adequate main memory capacity and processor speed be available when using some of the more advanced features of XDD. The XDD program itself is not CPU intensive but the faster the processor and the less loaded a system is the more accurate and consistent the results will be. As a rule, a minimum of 128MB of main memory is recommended just for the XDD program itself. All other system parameters are left to the discretion of the user.
+
