@@ -1,0 +1,13 @@
+\newpage
+\section{Performance Tuning Hints}\label{performance-tuning-hints}
+
+This section describes various hints about performance tuning.
+
+\subsection{\texorpdfstring{Caches and write performance }{Caches and write performance }}\label{caches-and-write-performance}
+
+When writing to a storage device whether it is a single disk drive or a disk array it is important to know the status of the caches on each of the devices that have cache. For maximum performance for write operations, it is necessary to enable the write caches on a disk array controller as well as the write caches on the disk drives themselves.
+
+\subsection{Fibre Channel Frame Sizes}\label{fibre-channel-frame-sizes}
+
+Fibre Channel host bus adapters (HBA), switches, and target devices all have frame sizes defined and negotiated when any two FC devices are connected together. For maximum bandwidth performance it is important to make certain that the FC frame size is set to 2048-bytes. For maximum transaction performance for small transaction sizes (i.e. around 512 bytes per transaction) a smaller frame size of 512 or 1024 bytes can be used.
+

@@ -1,0 +1,94 @@
+\newpage
+\section{Compiling and Installing XDD}\label{compiling-and-installing-xdd}
+
+\subsection{XDD Source Code Overview}\label{xdd-source-code-overview}
+
+The XDD distribution comes with all the source code necessary to install XDD and the companion programs timeserver and the gettime. For UNIX systems, a \emph{make} file is used to build any of these programs. The XDD distribution directory hierarchy has the following structure:
+
+\subsection{Build Notes}\label{build-notes}
+
+\subsubsection{Configure and Make}\label{configure-and-make}
+
+The process has been simplified for most XDD-supported operating systems.
+
+From the directory that contains the script called ``configure'' run the following command:
+
+\begin{quote}
+./configure
+\end{quote}
+
+This will build the file called ``Makefile'' that contains all the OS-dependencies adjusted for the build.
+
+At that point run any of the following:
+
+\begin{quote}
+make
+\end{quote}
+
+or
+
+\begin{quote}
+make install
+\end{quote}
+
+or
+
+\begin{quote}
+make clean ; make
+\end{quote}
+
+A simple ``make'' will simply make the xdd, timeserver, and gettime executables in the local XDD bin subdirectory.
+
+The ``make install'' will attempt to copy the XDD, timeserver, and gettime executables into /sbin on the local system. The user must have root privileges in order to perform a ``make install''.
+
+The ``make clean'' is used to remove all object files and previously compiled executables from the local XDD bin directory. It must be followed by an explicit ``make'' or ``make install'' to recompile the executables.
+
+\subsubsection{Supported Operating Systems}\label{supported-operating-systems}
+
+XDD is currently supported on a number of mainstream operating systems with limited support for some legacy operating systems. These operating systems include:
+
+\begin{itemize}
+\item
+  Linux (kernel versions 2.6 and above only)
+\item
+  AIX™ from IBM
+\item
+  Soon to be supported:
+
+  \begin{itemize}
+  \item
+    Mac OS X
+  \item
+    FreeBSD
+  \item
+    Solaris™ from Sun on Intel platforms
+  \item
+    Windows™ NT™ , Windows™ 2000™, Windows™ XP™, Windows™ Vista™, Windows™ Server™ 2003™, Windows™ Server™ 2008™, Windows™ 7™
+  \end{itemize}
+\end{itemize}
+
+The process for building XDD is relatively straight forward for all operating systems. There are two basic build environments: Windows™ systems and Unix-like systems. The basic process of building XDD is to extract the files from the XDD distribution archive and run the build program. The build program for Unix-like systems is ``make'' plus the ``c'' or ``gcc'' compiler. In either case, the XDD, timeserver, and gettime executables are built and placed in the ``bin'' subdirectory (see diagram).
+
+For all Unix-like systems that there will be an executable with and without the operating system name as an extension. For example, on a Linux system, the build process will produce an executable file called ``xdd.Linux'' and one called ``XDD''. The ``XDD'' executable is simply a hard link to the ``xdd.Linux'' executable. The same applies to the ``timeserver'' and ``gettime'' executable files.
+
+Finally, it is important to note that XDD does not depend on the ``timeserver'' or ``gettime'' programs. These additional programs are used in multi-hosted environments.
+
+\paragraph{Linux}\label{linux}
+
+Make uses either the cc or gcc compiler and associated libraries. Insure that the pthreads libraries are installed for correct compilation and linking. This is normally the case for most modern Linux installations.
+
+At the successful conclusion of the build process, the ``bin'' directory will contain the following files:
+
+\begin{itemize}
+\item
+  ``xdd.Linux'' and a hard link to ``xdd''
+\item
+  ``timeserver.Linux'' and a hard link to ``timeserver''
+\item
+  ``gettime.Linux'' and a hard link to ``gettime''
+\end{itemize}
+
+\paragraph{AIX}\label{aix}
+
+As in Linux, ensure that the \ul{pthread} libraries are installed.
+

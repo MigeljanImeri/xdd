@@ -1,0 +1,383 @@
+\newpage
+\section{Acknowledgements}\label{acknowledgements-1}
+
+HPUX is a registered trademark of Hewlett-Packard, Inc.
+
+AIX is a registered trademark of IBM Corporation.
+
+IRIX is a registered trademark of SGI.
+
+Solaris and SPARC are registered trademarks of Sun Microsystems, Inc.
+
+Windows, Windows NT, and Windows 2000 are registered trademarks of Microsoft, Inc.
+
+The author would like to acknowledge and thank all those people who have helped with adding various functions and bug fixes to XDD over the years.
+
+\textbf{The recent work on XDD version 6.7 and beyond is supported by the Oak Ridge National Laboratory Extreme Scale System Center and the United States Department of Defense.}
+
+\textbf{XDD Command Line Arguments Cheat Sheet}
+
+-blocksize \emph{{[}target \textless target\#\textgreater{]} number\_of\_bytes\_per\_block}
+
+-bytes \emph{{[}target \textless target\#\textgreater{]} number\_of\_bytes\_to\_xfer\_per\_pass}
+
+\emph{-}combinedout \emph{filename}
+
+-createnewfiles \emph{{[}target \#{]}}
+
+\emph{-}csvout \emph{filename}
+
+-datapattern \emph{{[}target \textless target\#\textgreater{]}}
+
+\emph{character\_pattern --or-}
+
+\emph{``}\textbf{random}\emph{'' --or-}
+
+\emph{``}\textbf{sequenced}\emph{'' --or-}
+
+\emph{``}\textbf{prefix}\emph{'' --or-}
+
+\emph{``}\textbf{inverse}\emph{'' --or-}
+
+\emph{``}\textbf{ascii} \textless{}\emph{string}\textgreater'' \emph{--or-}
+
+\emph{``}\textbf{hex} \textless{}\emph{hex digits 0-9, a-f or A-F}\textgreater{}\emph{'' --or-}
+
+\emph{``}\textbf{replicate}\emph{'' --or-}
+
+\emph{``}\textbf{lfpat}\emph{'' --or-}
+
+\emph{``}\textbf{ltpat}\emph{'' --or-}
+
+\emph{``}\textbf{cjtpat}\emph{'' --or-}
+
+\emph{``}\textbf{crpat}\emph{'' --or-}
+
+\emph{``}\textbf{cspat}\emph{''}
+
+-deletefile \emph{{[}target \textless target\#\textgreater{]}}
+
+-deskew
+
+-dio \emph{{[}target \textless target\#\textgreater{]}}
+
+-endtoend \emph{{[}target \textless target\#\textgreater{]}}
+
+\textbf{issource \textbar{} isdestination}
+
+\textbf{port} \emph{\#}
+
+\textbf{portcount} \emph{\#}
+
+\textbf{destination} \emph{host{[}:baseport\#{[},portcount{]}{]}}
+
+-errout \emph{filename}
+
+-flushwrite \emph{\#ops}
+
+-fullhelp
+
+-heartbeat \emph{{[}target \textless target\#{]}} \emph{\#seconds\textbar hostname\textbar{} target\textbar tod\textbar elapsed\textbar lf\textbar{} output\textless filename\textgreater\textbar bw\textbar ops\textbar bytes\textbar{} kbytes\textbar mbytes\textbar gbytes\textbar iops\textbar pct\textbar etc}
+
+-help \emph{option\_name}
+
+-id \textbf{commandline} - or - \emph{``id\_string''}
+
+-kbytes \emph{{[}target \textless target\#\textgreater{]} number\_of\_kilobytes\_to\_transfer}
+
+\emph{-}lockstep \emph{\textless master\_target\textgreater{} \textless slave\_target\textgreater{}}
+
+\emph{\textless when\textgreater{} \textless howlong\textgreater{}}
+
+\emph{\textless what\textgreater{} \textless howmuch\textgreater{}}
+
+\emph{\textless startup\textgreater{} \textless completion\textgreater{}}
+
+-maxall
+
+-maxerrors \emph{number\_of\_errors}
+
+-maxerrorstoprint \emph{number\_of\_errors\_to\_print}
+
+-maxpri
+
+-mbytes \emph{{[}target \textless target\#\textgreater{]} number\_of\_megabytes\_to\_transfer}
+
+-memalign \emph{{[}target \textless target\#\textgreater{]} alignment\_value\_in\_bytes}
+
+-minall
+
+-nobarrier
+
+-nomemlock
+
+-noordering {[}target \textless target\#\textgreater{]}
+
+-noproclock
+
+-numreqs \emph{{[}target \textless target\#\textgreater{]} number\_of\_requests\_to\_perform}
+
+-op \emph{{[}target \textless target\#\textgreater{]} rea}d\textbar{}\emph{write}
+
+-output \emph{filename}
+
+-outputformat \textbf{add} \emph{\textbar{}} \textbf{new} \emph{\textless format\_id\_string\textgreater{}}
+
+-passdelay \#.\#\emph{seconds}
+
+-passes \emph{number\_of\_passes}
+
+-passoffset \emph{{[}target \textless target\#\textgreater{]} offset\_in\_blocks}
+
+-percentcpu \textbf{absolute \textbar{} relative}
+
+-preallocate \emph{{[}target \textless target\#\textgreater{]} number\_of\_bytes}
+
+-processlock
+
+-processor \emph{target\_number processor\_number}
+
+-queuedepth \emph{{[}target \textless target\#\textgreater{]} number\_of\_commands\_per\_target}
+
+-qthreadinfo
+
+-randomize \emph{{[}target \textless target\#\textgreater{]}}
+
+-recreatefiles \emph{{[}target \#{]}}
+
+-reopen \emph{{[}target \#{]}}
+
+-reportthreshold \emph{{[}target \#{]} \textless\#.\#\textgreater{}}
+
+\emph{number\_of\_blocks}
+
+-restart \emph{{[}target \textless target\#\textgreater{]}}
+
+\textbf{enable}
+
+\textbf{frequency} \emph{\textless seconds\textgreater{}}
+
+\textbf{file} \emph{\textless name\_of\_restart\_file\textgreater{}}
+
+\textbf{offset} \emph{\textless offset\_in\_bytes\textgreater{}}
+
+-roundrobin \# or all
+
+-runtime \#.\#\emph{seconds}
+
+-rwratio \emph{{[}target target \#{]} \textless\%read\textgreater{}}
+
+-seek \emph{{[}target \textless target\#\textgreater{]}}
+
+\textbf{save} \emph{filename}
+
+\textbf{load} \emph{filename}
+
+\textbf{disthist} \emph{\#}
+
+\textbf{seekhist} \emph{\#}
+
+\textbf{random}
+
+\textbf{range \#}
+
+\textbf{stagger}
+
+\textbf{interleave \#}
+
+\textbf{seed \#}
+
+\textbf{none}
+
+-serialordering \emph{{[}target \textless target\#\textgreater{]}}
+
+-setup \emph{setup\_filename}
+
+-sgio
+
+-sharedmemory \emph{{[}target \textless target\#\textgreater{]}}
+
+-singleproc \emph{processor\_number}
+
+-startdelay \emph{\#.\#seconds}
+
+-startoffset \emph{{[}target \textless target\#\textgreater{]} starting\_block\_number}
+
+-starttime \emph{\#seconds}
+
+-starttrigger \emph{targetA target\textgreater{} \textbf{time\textbar op\textbar percent\textbar mbytes\textbar kbytes} \#}
+
+-stoponerror
+
+-stoptrigger \emph{targetA target\textgreater{} \textbf{time\textbar op\textbar percent\textbar mbytes\textbar kbytes} \#}
+
+-syncio \emph{number}
+
+-syncwrite \emph{{[}target \textless target\#\textgreater{]} number}
+
+-target \emph{filename}
+
+-targetdir \emph{{[}target \textless target\#\textgreater{]} directoryname pass}
+
+-targetoffset \emph{{[}target \textless target\#\textgreater{]} offset\_in\_blocks}
+
+-targets \emph{N filename1 filename2 \ldots{} filenameN}
+
+-targetstartdelay \emph{\#.\#seconds\_multiplier}
+
+-throttle \emph{{[}target \textless target\#\textgreater{]}}
+
+\textbf{ops} \emph{operations/sec}
+
+\textbf{bw} \emph{megabytes/second}
+
+-timelimit \emph{{[}target \textless target\#\textgreater{]} \#.\#seconds\_per\_pass}
+
+-timeserver
+
+\textbf{host} \emph{hostname}
+
+\textbf{port} \emph{port\#}
+
+\textbf{bounce} \emph{bounce\_count}
+
+-timestamps \emph{{[}target \textless target\#\textgreater{]}}
+
+\textbf{output} \emph{output\_filename\_prefix}
+
+\textbf{summary}
+
+\textbf{detailed}
+
+\textbf{normalize}
+
+\textbf{summary}
+
+\textbf{wrap}
+
+\textbf{oneshot}
+
+\textbf{size \#}
+
+\textbf{triggertime} \emph{\#seconds}
+
+\textbf{triggerop} \emph{operation\#}
+
+\textbf{append}
+
+\textbf{dump} \emph{dump\_filename\_prefix}
+
+-verbose
+
+-verify \emph{{[}target \textless target\#\textgreater{]}}
+
+\textbf{location}
+
+\textbf{contents}
+
+-version
+
+\textbf{Output Format Identifiers Cheat Sheet}
+
+\textbf{+WHAT}
+
+\textbf{+PASS}
+
+\textbf{+TARGET}
+
+\textbf{+QUEUE}
+
+\textbf{+BYTESTRANSFERED}
+
+\textbf{+BYTESXFERED}
+
+\textbf{+BYTESREAD}
+
+\textbf{+BYTESWRITTEN}
+
+\textbf{+OPS}
+
+\textbf{+READOPS}
+
+\textbf{+WRITEOPS}
+
+\textbf{+BANDWIDTH}
+
+\textbf{+READBANDWIDTH}
+
+\textbf{+WRITEBANDWIDTH}
+
+\textbf{+IOPS}
+
+\textbf{+READIOPS}
+
+\textbf{+WRITEIOPS}
+
+\textbf{+LATENCY}
+
+\textbf{+ELAPSEDTIME1STOP}
+
+\textbf{+ELAPSEDTIMEPASS}
+
+\textbf{+OVERHEADTIME}
+
+\textbf{+PATTERNFILLTIME}
+
+\textbf{+BUFFERFLUSHTIME}
+
+\textbf{+CPUTIME}
+
+\textbf{+PERCENTCPUTIME}
+
+\textbf{+PERCENTCPU}
+
+\textbf{+USERTIME}
+
+\textbf{+USER}
+
+\textbf{+USRTIME}
+
+\textbf{+SYSTEMTIME}
+
+\textbf{+SYSTEM}
+
+\textbf{+SYSTIME}
+
+\textbf{+PERCENTUSER}
+
+\textbf{+PERCENTUSERTIME}
+
+\textbf{+PERCENTUSR}
+
+\textbf{+PERCENTSYSTEM}
+
+\textbf{+PERCENTSYSTEMTIME}
+
+\textbf{+PERCENTSYS}
+
+\textbf{+OPTYPE}
+
+\textbf{+XFERSIZEBYTES}
+
+\textbf{+XFERSIZEBLOCKS}
+
+\textbf{+XFERSIZEKBYTES}
+
+\textbf{+XFERSIZEMBYTES}
+
+\textbf{+E2EIOTIME}
+
+\textbf{+E2ESRTIME}
+
+\textbf{+E2EPERCENTSRTIME}
+
+\textbf{+E2ELAGTIME}
+
+\textbf{+E2EPERCENTLAGTIME}
+
+\textbf{+E2EFIRSTREADTIME}
+
+\textbf{+E2ELASTWRITETIME}
+
+\textbf{+DELIM}
+
