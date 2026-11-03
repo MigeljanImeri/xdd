@@ -47,6 +47,11 @@ xint_target_init(target_data_t *tdp) {
 	if (status)
 		return(-1);
 
+
+	// Calculate size and type of target
+	if (xint_calculate_target_info(tdp) != 0) {
+		return 1;
+	}
 	/* Perform pretruncation if needed */
 	xint_target_pretruncate(tdp);
 
@@ -148,6 +153,102 @@ xint_target_init(target_data_t *tdp) {
 
 	return(0);
 } // End of xdd_target_init()
+
+/*----------------------------------------------------------------------------*/
+/* xint_calculate_target_info() - Will determine file type and size based on what it is,
+ * either a regular file, block device, or character device file 
+ * This subroutine is only called by xdd_build_target_data_substructure() and is
+ * given a pointer to a Target TARGET_DATA to operate on.
+ */
+int
+xint_calculate_target_info(target_data_t *tdp) {
+	struct stat sb; 					// Size struct 
+	seekhdr_t* sp = &tdp->td_seekhdr;
+
+	// Get name of target
+	xdd_target_open(tdp);
+
+	// If size is read from path
+	if (stat(tdp->td_target_full_pathname, &sb) == 0)
+	{
+
+		// if is a character device
+		if (S_ISCHR(sb.st_mode))
+		{
+			tdp->td_filetype = sb.st_mode;
+			tdp->td_filesize = 0; // No need to check anything here, just set size
+			sp->seek_range = DEFAULT_RANGE; // maintain 1024 default
+			return 0;
+		}
+
+		// if is a regular file
+		else if (S_ISREG(sb.st_mode))
+		{
+			tdp->td_filetype = sb.st_mode;
+			tdp->td_filesize = (uint64_t)sb.st_size;
+
+			// Greater than 0 means user passed a value, leave be if so
+			if (sp->seek_range == 0)
+			{
+				// default value -> dynamic calculation
+				sp->seek_range = (uint64_t)(tdp->td_filesize / tdp->td_block_size);
+			}
+			return 0;
+		}
+			
+		// if is a block device
+		else if (S_ISBLK(sb.st_mode))
+		{
+			tdp->td_filetype = sb.st_mode;
+
+			// Attempt to read file size data for a block device
+			int blk_fd = open(tdp->td_target_full_pathname, O_RDONLY);
+			if (blk_fd >= 0)
+			{
+				if (ioctl(blk_fd, BLKGETSIZE64, tdp->td_filesize) != 0)
+				{
+					close(blk_fd);
+					const int err = errno;
+					fprintf(xgp->errout, "%s: xdd_calculate_target_info: ERROR: Failed to open block device with ioctl: %s\n",
+						xgp->progname,
+						strerror(err));
+					return 1;
+				}
+				close(blk_fd);
+			}
+			else 
+			{
+				const int err = errno;
+				fprintf(xgp->errout, "%s: xdd_calculate_target_info: ERROR: Failed to open block device with open: %s\n",
+					xgp->progname,
+					strerror(err));
+				return 1;
+			}
+			
+			// Greater than 0 means user passed a value, leave be if so
+			if (sp->seek_range == 0)
+			{
+				// default value -> dynamic calculation
+				sp->seek_range = (uint64_t)(tdp->td_filesize / tdp->td_block_size);
+			}
+			return 0;
+		}
+		else
+		{
+			printf("Error: unknown file type for target %d. Ensure targets are a regular, character, or block files.\n", tdp->td_target_number);
+			return 1;
+		}
+	}
+	else 
+	{
+		const int err = errno;
+		fprintf(xgp->errout, "%s: xdd_calculate_target_info: ERROR: Failed to open target file: %s\n",
+			xgp->progname,
+			strerror(err));
+		return 1;
+	}	
+} // End of xint_calculate_target_info()
+
 
 /*----------------------------------------------------------------------------*/
 /* xint_target_init_barriers() - Initialize the barriers and mutex

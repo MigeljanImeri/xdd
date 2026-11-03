@@ -190,9 +190,11 @@ int		xdd_get_processor(void);
 // target_data.c
 void	xdd_init_new_target_data(target_data_t *tdp, int32_t n);
 void	xdd_calculate_xfer_info(target_data_t *tdp);
+int     xdd_calculate_target_info(target_data_t *tdp);
 worker_data_t 	*xdd_create_worker_data(target_data_t *tdp, int32_t q);
-void	xdd_build_target_data_substructure(xdd_plan_t* planp);
-void	xdd_build_target_data_substructure_e2e(xdd_plan_t* planp, target_data_t *tdp);
+int	xdd_build_target_data_substructure(xdd_plan_t* planp);
+int	xdd_build_target_data_substructure_e2e(xdd_plan_t* planp, target_data_t *tdp);
+int xint_calculate_target_info(target_data_t *tdp);
 
 // worker_thread.c
 void 	*xdd_worker_thread(void *pin);

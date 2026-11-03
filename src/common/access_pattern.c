@@ -175,10 +175,9 @@ xdd_init_seek_list(target_data_t *tdp) {
 		rw_index = 0;
 		rw_index_incr = 1;
 		sp->seek_num_rw_ops = sp->seek_total_ops;
-		if (tdp->td_rwratio >= 0.5) /* This has to be set correctly or the first op may not be correct */
-			previous_percent_op = -1.0;
-		else
-			previous_percent_op = 0.0;
+
+		/* This has to be set correctly or the first op may not be correct */
+		previous_percent_op = (tdp->td_rwratio >= 0.5) ? -1.0 : 0.0;
 		/* We start out by first filling in the sequential seek location */
 		for (op_index = 0; op_index < sp->seek_total_ops; op_index++) {   
 			/* generating a sequential seek */

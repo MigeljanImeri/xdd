@@ -75,7 +75,7 @@ xdd_init_new_target_data(target_data_t *tdp, int32_t n) {
 	}
 	/* Init the seeklist header fields */
 	tdp->td_seekhdr.seek_options = 0;
-	tdp->td_seekhdr.seek_range = DEFAULT_RANGE;
+	tdp->td_seekhdr.seek_range = 0; /* DEFAULT_RANGE does exist, but is set based on type of target file */
 	tdp->td_seekhdr.seek_seed = DEFAULT_SEED;
 	tdp->td_seekhdr.seek_interleave = DEFAULT_INTERLEAVE;
 	tdp->td_seekhdr.seek_iosize = DEFAULT_BLOCKSIZE;
@@ -393,7 +393,7 @@ xdd_create_worker_data(target_data_t *tdp, int32_t q) {
  *     Target3 has a queuedepth of 1 (the default) and hence has only one Worker Thread (0).
  *     Target N has a queuedepth of 4, possibly more.
  */
-void
+int
 xdd_build_target_data_substructure(xdd_plan_t* planp) {
 	int32_t 		q;				// working variable
 	int32_t 		target_number;	// working variable
@@ -414,7 +414,9 @@ xdd_build_target_data_substructure(xdd_plan_t* planp) {
 
 		// Handle the End-to-End cases
 		if (tdp->td_target_options & TO_ENDTOEND) {
-			xdd_build_target_data_substructure_e2e(planp, tdp);
+			if (xdd_build_target_data_substructure_e2e(planp, tdp) != 0) {
+				return 1;
+			}
 		}
 
 		// if a load file is given, it will override the blocksize from the command line
@@ -441,6 +443,7 @@ xdd_build_target_data_substructure(xdd_plan_t* planp) {
 		} // End of FOR loop that adds all Worker_Datas to a Target_Data linked list
 
 	} // End of FOR loop that builds Worker_Datas for each Target_Data
+	return 0;
 } /* End of xdd_build_target_data_substructure() */
 
 /*----------------------------------------------------------------------------*/
@@ -476,7 +479,7 @@ xdd_build_target_data_substructure(xdd_plan_t* planp) {
 //		queue depth will be set to the number of destination hostnames specified and the port count
 //		for each entry in the e2e_address_table will be set to 1.
 //
-void
+int
 xdd_build_target_data_substructure_e2e(xdd_plan_t* planp, target_data_t *tdp) {
 	int32_t			entry;			// Entry number
 	int32_t			number_of_ports;// Number of ports to distribute - working variable
@@ -486,7 +489,7 @@ xdd_build_target_data_substructure_e2e(xdd_plan_t* planp, target_data_t *tdp) {
 		fprintf(xgp->errout,"%s: xdd_build_target_data_substructure: ERROR: No E2E Destination Hosts defined!\n",
 			xgp->progname);
 		xgp->abort = 1;
-		return;
+		return 1;
 	}
 	// At this point the host_count is greater than zero...
 	if (tdp->td_e2ep->e2e_address_table_port_count > 0) {
@@ -525,6 +528,7 @@ xdd_build_target_data_substructure_e2e(xdd_plan_t* planp, target_data_t *tdp) {
 			} // End of WHILE loop that sets port counts
 		} // End of ELSE clause with port_count == 0 and queue_depth > host addresses
 	} // End of ELSE clause with port_count == 0
+	return 0;
 } // End of xdd_build_target_data_substructure_e2e()
 
 /*

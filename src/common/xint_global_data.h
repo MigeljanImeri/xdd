@@ -15,6 +15,8 @@
 
 #include <sys/utsname.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
 #include <pthread.h>
 #include "barrier.h"
 
